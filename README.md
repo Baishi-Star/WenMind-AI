@@ -6,8 +6,13 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 1 —— 工程初始化（前后端骨架 + 健康检查 + 前后端真实连通）。**
-本阶段不包含登录、作文、Agent、RAG 等业务功能，将在后续阶段逐一实现。
+**当前进度：阶段 2 —— 前端 UI 与角色框架已完成。**
+已具备阶段 1 的前后端骨架、健康检查与真实连通，以及阶段 2 的三角色工作台、22 个业务页面导航、
+可折叠侧边栏、顶部导航、面包屑、头像退出菜单和登录/角色路由守卫。
+
+> **真实性边界**：`/login` 当前是**前端演示角色入口**，仅用于界面与路由演示，不会生成真实访问令牌；
+> 后端账号密码认证、JWT 与数据库用户模型尚未接入。业务页面统一标注"界面框架 · 待接入后端"，
+> 只展示计划能力与 API 契约，**不展示虚构作文、分数或统计数据**。目前唯一真实远程数据为 `/api/v1/health`。
 
 ## 一、技术栈
 
@@ -18,7 +23,7 @@
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
 | 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 依赖已安装，数据模型在阶段 2 建立 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 依赖已安装，数据模型在后端认证阶段建立 |
 | 模型接入 | OpenAI-compatible API 适配层 | 阶段 3 实现，当前默认 Mock 模式 |
 
 ## 二、目录结构
@@ -46,13 +51,14 @@ CodeArts Agent/
 │   ├── src/
 │   │   ├── api/                # Axios 实例与接口封装
 │   │   ├── assets/             # 静态资源
-│   │   ├── components/         # 通用组件（HealthPanel）
-│   │   ├── layouts/            # 全局布局
-│   │   ├── router/             # 路由与标题管理
-│   │   ├── stores/             # Pinia（应用/健康检查状态）
-│   │   ├── styles/             # 全局样式与设计变量
+│   │   ├── components/         # 页头、待接入页、后端状态卡、工作台等通用组件
+│   │   ├── config/             # 角色菜单（portal.js）与页面 API 契约（modules.js）
+│   │   ├── layouts/            # DefaultLayout 公共布局、PortalLayout 三端门户布局
+│   │   ├── router/             # 全部页面路由、登录守卫与角色守卫
+│   │   ├── stores/             # Pinia（app 健康检查、auth 演示角色会话）
+│   │   ├── styles/             # 蓝紫教育科技主题与统一卡片/表格/表单样式
 │   │   ├── utils/              # 格式化工具
-│   │   └── views/              # 页面（student / teacher / admin 已占位）
+│   │   └── views/              # auth 登录页 + student 8 页 + teacher 8 页 + admin 6 页
 │   ├── .env.development
 │   ├── .env.example
 │   ├── eslint.config.js
@@ -108,6 +114,17 @@ npm run dev
 
 - `/`：产品首页，展示后端在线状态。
 - `/system/status`：后端连接测试页，点击"重新检测"通过 Axios 调用真实后端接口。
+- `/login`：演示角色登录页，选择学生、教师或管理员进入对应工作台。
+
+角色页面路由（未选择演示角色时访问会自动跳转 `/login`，跨角色访问会回到本角色工作台）：
+
+| 角色 | 路由 |
+|---|---|
+| 学生 | `/student/dashboard`、`/student/essays`、`/student/essays/new`、`/student/evaluations`、`/student/revision`、`/student/appeals`、`/student/growth`、`/student/training` |
+| 教师 | `/teacher/dashboard`、`/teacher/classes`、`/teacher/assignments`、`/teacher/reviews`、`/teacher/appeals`、`/teacher/analytics`、`/teacher/disputes`、`/teacher/rubrics` |
+| 管理员 | `/admin/dashboard`、`/admin/knowledge`、`/admin/agents`、`/admin/model`、`/admin/prompts`、`/admin/logs` |
+
+除工作台中的真实后端健康状态外，上述业务页面均为明确标注的界面框架，不包含虚构业务数据。
 
 前端通过 Vite 代理将 `/api/*` 转发到 `VITE_PROXY_TARGET`（默认 `http://127.0.0.1:8000`），
 开发环境无跨域问题；直接访问后端时由后端 `BACKEND_CORS_ORIGINS` 白名单控制。
@@ -155,7 +172,7 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 阶段 2 | 用户与角色模型、JWT 登录、三端布局与路由守卫、演示账号 |
+| 下一阶段（后端认证） | 用户与角色模型、SQLite 初始化、JWT 登录、真实演示账号、前端登录接口替换演示会话 |
 | 阶段 3 | 作文提交、评价任务状态机、LLM 适配层与 Mock 模式 |
 | 阶段 4 | Orchestrator 与审题/内容/结构/语言/综合/质量审核 Agent |
 | 阶段 5 | 知识库上传解析、FAISS 检索与检索测试页 |

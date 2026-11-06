@@ -37,8 +37,15 @@
           effect="plain"
           type="info"
         >
-          V1.0 · 阶段 1 工程骨架
+          V1.0 · 前端角色框架
         </el-tag>
+        <el-button
+          type="primary"
+          size="small"
+          @click="goPortal"
+        >
+          {{ authStore.isAuthenticated ? '进入工作台' : '演示角色登录' }}
+        </el-button>
       </div>
     </header>
 
@@ -54,6 +61,16 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
+
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+function goPortal() {
+  router.push(authStore.isAuthenticated ? authStore.homePath : '/login')
+}
 </script>
 
 <style scoped>
