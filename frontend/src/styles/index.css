@@ -1,0 +1,80 @@
+:root {
+  --wm-primary: #1d4ed8;
+  --wm-primary-deep: #16337a;
+  --wm-accent: #0e9f9f;
+  --wm-bg: #f4f6fb;
+  --wm-surface: #ffffff;
+  --wm-text-main: #16213b;
+  --wm-text-secondary: #5c6b8a;
+  --wm-border: #e3e8f2;
+  --wm-radius-lg: 18px;
+  --wm-radius-md: 12px;
+  --wm-shadow: 0 12px 32px rgba(22, 51, 122, 0.08);
+  --el-color-primary: var(--wm-primary);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--wm-text-main);
+  background: var(--wm-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.wm-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+.wm-page-header {
+  margin-bottom: 20px;
+}
+
+.wm-page-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.wm-page-subtitle {
+  margin: 0;
+  color: var(--wm-text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.wm-card {
+  background: var(--wm-surface);
+  border: 1px solid var(--wm-border);
+  border-radius: var(--wm-radius-lg);
+  box-shadow: var(--wm-shadow);
+}
+
+.wm-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.wm-muted {
+  color: var(--wm-text-secondary);
+}
+
+.wm-mono {
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+}
