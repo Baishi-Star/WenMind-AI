@@ -6,13 +6,26 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 2 —— 前端 UI 与角色框架已完成。**
-已具备阶段 1 的前后端骨架、健康检查与真实连通，以及阶段 2 的三角色工作台、22 个业务页面导航、
-可折叠侧边栏、顶部导航、面包屑、头像退出菜单和登录/角色路由守卫。
+**当前进度：阶段 3 —— 后端基础、数据库与真实认证已完成。**
+已具备前后端骨架、三角色前端页面框架、18 张 SQLite 数据表、自动建表与幂等演示数据、
+PBKDF2 密码哈希、JWT 登录、后端角色与资源归属校验，以及作文、班级、评价任务基础 API。
 
-> **真实性边界**：`/login` 当前是**前端演示角色入口**，仅用于界面与路由演示，不会生成真实访问令牌；
-> 后端账号密码认证、JWT 与数据库用户模型尚未接入。业务页面统一标注"界面框架 · 待接入后端"，
-> 只展示计划能力与 API 契约，**不展示虚构作文、分数或统计数据**。目前唯一真实远程数据为 `/api/v1/health`。
+> **真实性边界**：后端认证和业务数据已真实持久化；前端 `/login` 目前仍是**演示角色入口**，
+> 尚未切换为真实账号密码登录，退出时只清理前端演示会话。业务页面仍标注"界面框架 · 待接入后端"，
+> 下一阶段将接入真实认证。评价接口本阶段只创建 `pending` 任务，**不生成或展示虚构 AI 分数**。
+
+## 快速启动（Windows 推荐）
+
+双击项目根目录的 **`start.bat`** 即可：
+
+1. 检查 Node.js、npm、Python 环境；
+2. 首次运行时自动创建后端虚拟环境、安装后端依赖并生成 `.env`；
+3. 首次运行时自动执行前端 `npm install`；
+4. 分别打开 `WenMind Backend` 与 `WenMind Frontend` 两个服务窗口；
+5. 等待后端健康检查和前端页面均就绪后，自动用默认浏览器打开 `http://127.0.0.1:5173/login`。
+
+使用期间请保持两个服务窗口开启。需要停止时双击 **`stop.bat`**。
+如果 8000 或 5173 端口已有服务监听，脚本会跳过重复启动，直接检查并打开页面。
 
 ## 一、技术栈
 
@@ -23,8 +36,9 @@
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
 | 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 依赖已安装，数据模型在后端认证阶段建立 |
-| 模型接入 | OpenAI-compatible API 适配层 | 阶段 3 实现，当前默认 Mock 模式 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 18 张表、自动建表与幂等演示数据已完成 |
+| 认证与权限 | PBKDF2-SHA256、PyJWT | 注册登录、角色与资源归属校验已完成 |
+| 模型接入 | OpenAI-compatible API 适配层 | 后续 Agent 阶段实现，当前默认 Mock 模式 |
 
 ## 二、目录结构
 
@@ -102,6 +116,54 @@ uvicorn app.main:app --reload
 - 健康检查：<http://127.0.0.1:8000/api/v1/health>
 - 接口文档：<http://127.0.0.1:8000/docs>
 
+### 数据库结构与演示账号
+
+数据库文件默认位于 `backend/data/wenmind.db`。服务启动时自动建表并幂等写入演示数据；
+也可在 `backend` 目录手动执行 `python -m app.db.init_db`。已有用户数据时不会重复插入。
+
+| 模块 | 数据表 |
+|---|---|
+| 用户与班级 | `users`、`classes`、`enrollments` |
+| 作文 | `essay_prompts`、`essays` |
+| 评价与证据 | `evaluations`、`dimension_scores`、`feedback_items`、`agent_runs` |
+| 申诉与复核 | `appeals`、`review_records` |
+| 规则与版本 | `rubric_versions`、`rule_proposals` |
+| 知识库 | `kb_documents`、`kb_chunks` |
+| 成长与训练 | `growth_profiles`、`growth_snapshots`、`training_tasks` |
+
+所有表均有主键和时间字段；业务外键、作文/评价状态索引、班级学生唯一约束、量规版本唯一约束、
+评价维度唯一约束等已在 Model 中定义。`evaluations` 分离保存 `original_total_score` 与
+`final_total_score`，为后续 AI 原始评价与教师复核双轨存储提供约束。
+
+| 角色 | 用户名 | 初始密码 | 显示名 |
+|---|---|---|---|
+| 学生 | `demo_student` | `Demo@2026` | 演示学生一 |
+| 学生 | `demo_student2` | `Demo@2026` | 演示学生二 |
+| 学生 | `demo_student3` | `Demo@2026` | 演示学生三 |
+| 教师 | `demo_teacher` | `Demo@2026` | 演示教师 |
+| 管理员 | `demo_admin` | `Demo@2026` | 演示管理员 |
+
+上述账号、演示班级、3 个作文题目和 3 篇示例作文均设置 `is_demo=true`。
+密码仅用于本地演示，生产部署必须修改；数据库只保存 PBKDF2-SHA256 哈希。
+公开 `/auth/register` 只能注册学生，不能自助注册教师或管理员。
+
+### 阶段 3 业务接口
+
+统一前缀为 `/api/v1`，除注册、登录和健康检查外均需 `Authorization: Bearer <token>`。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/auth/register` | 注册学生账号 |
+| POST | `/auth/login` | 登录并返回 JWT |
+| GET | `/auth/me` | 当前用户信息 |
+| GET / POST | `/essays` | 按归属分页查询 / 学生提交作文 |
+| GET | `/essays/{essay_id}` | 作文详情，校验学生或授权班级归属 |
+| GET / POST | `/classes` | 按角色查询 / 教师或管理员创建班级 |
+| GET | `/classes/{class_id}` | 班级详情与归属校验 |
+| POST | `/evaluations/{essay_id}` | 创建真实 `pending` 评价任务，防止活动任务重复创建 |
+| GET | `/evaluations/{evaluation_id}` | 评价任务状态与双轨分数字段 |
+| GET | `/health` | 健康检查 |
+
 ## 五、前端启动
 
 ```bash
@@ -172,8 +234,7 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 下一阶段（后端认证） | 用户与角色模型、SQLite 初始化、JWT 登录、真实演示账号、前端登录接口替换演示会话 |
-| 阶段 3 | 作文提交、评价任务状态机、LLM 适配层与 Mock 模式 |
+| 下一阶段（前后端联调） | 前端真实账号密码登录、Token 状态管理、作文/班级/评价 API 接入 |
 | 阶段 4 | Orchestrator 与审题/内容/结构/语言/综合/质量审核 Agent |
 | 阶段 5 | 知识库上传解析、FAISS 检索与检索测试页 |
 | 阶段 6 | 评价报告、原文证据校验与高亮、学生申诉、教师复核 |

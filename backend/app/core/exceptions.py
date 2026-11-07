@@ -30,6 +30,16 @@ class NotFoundError(AppError):
         super().__init__(message, ErrorCode.NOT_FOUND, status.HTTP_404_NOT_FOUND)
 
 
+class UnauthorizedError(AppError):
+    def __init__(self, message: str = "未登录或访问令牌已失效") -> None:
+        super().__init__(message, ErrorCode.UNAUTHORIZED, status.HTTP_401_UNAUTHORIZED)
+
+
+class ConflictError(AppError):
+    def __init__(self, message: str = "资源状态冲突") -> None:
+        super().__init__(message, ErrorCode.CONFLICT, status.HTTP_409_CONFLICT)
+
+
 class PermissionDeniedError(AppError):
     def __init__(self, message: str = "无权访问该资源") -> None:
         super().__init__(message, ErrorCode.FORBIDDEN, status.HTTP_403_FORBIDDEN)

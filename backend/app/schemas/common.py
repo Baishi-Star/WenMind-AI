@@ -39,5 +39,12 @@ class ApiResponse(BaseModel, Generic[T]):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class PageData(BaseModel, Generic[T]):
+    items: list[T]
+    total: int
+    page: int
+    page_size: int
+
+
 def success(data: T | None = None, message: str = "success") -> ApiResponse[T]:
     return ApiResponse[T](data=data, message=message)
