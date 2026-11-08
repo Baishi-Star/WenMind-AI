@@ -7,11 +7,13 @@ from app.models.evaluation import AgentRun, DimensionScore, Evaluation, Feedback
 from app.models.growth import GrowthProfile, GrowthSnapshot, TrainingTask
 from app.models.knowledge import KbChunk, KbDocument
 from app.models.rubric import RubricVersion, RuleProposal
+from app.models.student_interaction import AppealItem, EvaluationQuestion
 from app.models.user import ClassRoom, Enrollment, User
 
 __all__ = [
     "AgentRun",
     "Appeal",
+    "AppealItem",
     "Base",
     "ClassRoom",
     "Dimension",
@@ -21,6 +23,7 @@ __all__ = [
     "EssayPrompt",
     "EssayStatus",
     "Evaluation",
+    "EvaluationQuestion",
     "EvaluationReport",
     "EvaluationStatus",
     "FeedbackItem",

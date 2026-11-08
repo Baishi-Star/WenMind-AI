@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.interaction import FeedbackItemResponse
+
 
 class DimensionScoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -65,3 +67,4 @@ class EvaluationResponse(BaseModel):
     report: EvaluationReportResponse | None = None
     agent_runs: list[AgentRunResponse] = Field(default_factory=list)
     retrievals: list[RetrievalLogResponse] = Field(default_factory=list)
+    feedback_items: list[FeedbackItemResponse] = Field(default_factory=list)

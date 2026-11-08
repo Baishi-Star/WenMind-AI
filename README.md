@@ -6,15 +6,15 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 5 —— 多智能体作文评价系统已完成。**
-已具备 20 张 SQLite 数据表、真实 JWT、知识库 RAG、Orchestrator、6 个专业 Agent、
-结构化输出校验、原文证据核验、后台任务状态机、综合报告与质量审核，以及前端过程可视化页面。
-新建评价自动通过 FastAPI BackgroundTasks 执行，旧的待处理或失败任务可手动启动。
+**当前进度：阶段 6 —— 学生端作文评价与交互功能已完成。**
+已具备 22 张 SQLite 数据表、真实 JWT、知识库 RAG、多 Agent 评价、题目选择、草稿与提交、
+作文历史、反馈优点/问题/建议、原文证据高亮定位、多轮追问，以及学生申诉和进度查询。
+追问、申诉关联项、原文证据和处理状态均持久化，不依赖前端临时状态。
 
 > **真实性边界**：当前验收使用 **Mock 规则引擎**，只验证调度、检索、结构化结果、证据和持久化，
-> 不冒充真实模型语义推理。真实模型通过 OpenAI-compatible API 接入，需配置 `LLM_*` 并关闭 Mock。
-> 内容、组织、语言仅输出 1–5 诊断等级，**不计算加权总分、不编造正式评分区间**；
-> AI 评价是教学诊断性参考，原始诊断值与教师最终复核值分字段保存。
+> 不冒充真实模型语义推理；Mock 追问也只提供流程性说明。真实模型需配置 `LLM_*` 并关闭 Mock。
+> 内容、组织、语言仅输出 1–5 诊断等级，不计算加权总分；申诉不会自动改分，AI 原始评价不被覆盖。
+> 本阶段学生申诉为 `pending`，教师复核处理和最终状态流转在下一阶段接入。
 
 ## 快速启动（Windows 推荐）
 
@@ -38,7 +38,7 @@
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
 | 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 20 张表、自动建表与幂等演示数据已完成 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 22 张表、自动建表与幂等演示数据已完成 |
 | 认证与权限 | PBKDF2-SHA256、PyJWT | 注册登录、角色与资源归属校验已完成 |
 | 模型接入 | OpenAI-compatible API + Mock 规则引擎 | 多 Agent 已接入，当前验收使用显式 Mock 模式 |
 
@@ -216,6 +216,20 @@ uvicorn app.main:app --reload
 `GET /evaluations/{evaluation_id}`、`GET /evaluations/{evaluation_id}/runs`、
 `GET /evaluations/{evaluation_id}/retrievals`。
 
+### 学生端作文交互（阶段 6）
+
+学生业务链已真实连通：`题目选择 → 草稿 → 提交 → 多 Agent 评价 → 反馈与原文证据 → 多轮追问 → 申诉 → 进度查询`。
+
+- `GET /essays/prompts`：作文题目与写作要求。
+- `POST /essays`、`PUT /essays/{essay_id}`：新建草稿、编辑草稿和正式提交；已提交作文保留评价历史。
+- `GET /evaluations/{evaluation_id}`：综合报告、Agent、RAG、维度诊断值和 `feedback_items`。
+- `GET/POST /evaluations/{evaluation_id}/questions`：多轮追问历史与发起追问。
+- `GET/POST /appeals`、`GET /appeals/{appeal_id}`：学生提交申诉和查询进度。
+- `evaluation_questions` 保存问题、回答、证据、执行模式和模型信息；`appeal_items` 保存争议评价项及证据快照。
+
+原文高亮只使用后端已核验的位置和引用，未核验内容会标注待核验，不会插入学生原文冒充真实写作内容。
+追问尊重学生的个性表达；Mock 仅作流程说明，真实语义回答需配置 LLM。
+
 ## 五、前端启动
 
 ```bash
@@ -286,6 +300,6 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 阶段 6 | 学生申诉、教师复核、评价证据高亮与申诉进度展示 |
+| 下一阶段（教师复核） | 教师申诉工作台、维持/调整/重新评价、问题标签与复核结果双轨保存 |
 | 阶段 7 | 争议统计、规则版本管理、成长画像、训练推荐、班级分析 |
 | 阶段 8 | 测试补全、部署文档、演示数据与提交打包 |

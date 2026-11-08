@@ -8,7 +8,7 @@ from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.models.agent_evaluation import EvaluationReport, RetrievalLog
 from app.models.base import EssayStatus, EvaluationStatus
 from app.models.essay import Essay
-from app.models.evaluation import AgentRun, DimensionScore, Evaluation
+from app.models.evaluation import AgentRun, DimensionScore, Evaluation, FeedbackItem
 from app.models.rubric import RubricVersion
 from app.models.user import User
 from app.schemas.common import PageData
@@ -19,6 +19,7 @@ from app.schemas.evaluation import (
     EvaluationResponse,
     RetrievalLogResponse,
 )
+from app.schemas.interaction import FeedbackItemResponse
 from app.services.access_service import accessible_student_ids
 from app.services.essay_service import get_essay_entity
 
@@ -123,6 +124,21 @@ def _serialize_evaluation(db: Session, evaluation: Evaluation, include_details: 
         report=report_data,
         agent_runs=runs_data,
         retrievals=retrievals_data,
+        feedback_items=[
+            FeedbackItemResponse(
+                id=item.id,
+                dimension=item.dimension,
+                category=item.category,
+                content=item.content,
+                suggestion=item.suggestion,
+                evidence=_loads(item.evidence_json, []),
+                verified_status=item.verified_status,
+                created_at=item.created_at,
+            )
+            for item in db.scalars(
+                select(FeedbackItem).where(FeedbackItem.evaluation_id == evaluation.id).order_by(FeedbackItem.id)
+            ).all()
+        ] if include_details else [],
     )
 
 

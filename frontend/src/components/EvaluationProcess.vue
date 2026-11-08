@@ -252,17 +252,37 @@
         AI 原始诊断与教师最终复核分字段保存；当前无教师复核时 final_score 为空，不覆盖 AI 原始记录。
       </p>
     </section>
+
+    <EvidencePanel
+      v-if="evaluation.status === 'completed' && essayContent"
+      :essay-content="essayContent"
+      :feedback-items="evaluation.feedback_items"
+      @appeal="forwardAppeal"
+    />
+    <EvaluationChat
+      v-if="evaluation.status === 'completed'"
+      :evaluation-id="evaluation.id"
+      :feedback-items="evaluation.feedback_items"
+    />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 
+import EvidencePanel from '@/components/EvidencePanel.vue'
+import EvaluationChat from '@/components/EvaluationChat.vue'
 import { formatDateTime } from '@/utils/format'
 
 const props = defineProps({
   evaluation: { type: Object, required: true },
+  essayContent: { type: String, default: '' },
 })
+const emit = defineEmits(['appeal'])
+
+function forwardAppeal(item) {
+  emit('appeal', item)
+}
 
 const agentNames = {
   topic_agent: '审题分析 Agent',

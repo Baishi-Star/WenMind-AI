@@ -83,6 +83,7 @@ def run_mock_agent(
             **common,
             analysis="Mock 汇总（非模型推理）：已收集审题、内容、结构、语言 Agent 的结构化结果，仅进行字段汇总，不生成虚构综合评价。",
             overall_summary="本次为 Mock 流程演示：系统已完成多 Agent 调度、RAG 记录、结构化结果和证据位置校验；作文的实际质量需由真实模型或教师判断。",
+            evidence=[evidence for result in previous_results for evidence in result.evidence][:4],
             strengths=["已形成内容、组织、语言三维度的诊断性记录"],
             problems=["Mock 模式不具备语义理解能力，不能据此判断作文真实水平"],
             suggestions=["切换到真实模型后复核诊断内容，或由教师直接复核"],

@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="AI 评价结果"
-      subtitle="选择本人真实作文，触发 Orchestrator 与多 Agent 后台评价，并轮询查看 RAG、独立分析、证据审核和综合报告。"
+      subtitle="选择本人真实作文，触发多 Agent 评价，并查看原文证据、追问记录和申诉进度。"
     >
       <template #tag>
         <el-tag
@@ -41,7 +41,8 @@
                   v-for="essay in essays"
                   :key="essay.id"
                   :value="essay.id"
-                  :label="`#${essay.id} ${essay.prompt_title || '自由作文'}`"
+                  :disabled="essay.status === 'draft'"
+                  :label="`#${essay.id} ${essay.prompt_title || '自由作文'}${essay.status === 'draft' ? '（草稿需先提交）' : ''}`"
                 />
               </el-select>
             </el-form-item>
@@ -103,6 +104,22 @@
           >
             {{ currentEvaluation.status === 'failed' ? '重新执行失败任务' : '启动评价任务' }}
           </el-button>
+          <el-button
+            v-if="currentEvaluation.status === 'completed'"
+            type="warning"
+            plain
+            @click="openAppeal(null)"
+          >
+            对本次评价有异议
+          </el-button>
+          <el-button
+            v-if="currentEvaluation.status === 'completed'"
+            text
+            type="primary"
+            @click="router.push('/student/appeals')"
+          >
+            查看申诉进度
+          </el-button>
           <el-tag
             v-if="polling"
             type="warning"
@@ -123,6 +140,8 @@
         <EvaluationProcess
           v-if="currentEvaluation"
           :evaluation="currentEvaluation"
+          :essay-content="essayContent"
+          @appeal="openAppeal"
         />
         <section
           v-else
@@ -140,15 +159,27 @@
         </section>
       </main>
     </div>
+
+    <AppealDialog
+      v-if="currentEvaluation"
+      v-model="appealVisible"
+      :evaluation="currentEvaluation"
+      :feedback-item="appealFeedbackItem"
+      @submitted="handleAppealSubmitted"
+    />
   </div>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
+import AppealDialog from '@/components/AppealDialog.vue'
 import EvaluationProcess from '@/components/EvaluationProcess.vue'
 import PageHeader from '@/components/PageHeader.vue'
+
+import { fetchEssay } from '@/api/essay'
 import {
   createEvaluation,
   executeEvaluation,
@@ -158,18 +189,22 @@ import {
 } from '@/api/evaluation'
 import { formatDateTime } from '@/utils/format'
 
+const router = useRouter()
 const essays = ref([])
 const evaluations = ref([])
 const selectedEssayId = ref(null)
 const currentEvaluation = ref(null)
+const essayContent = ref('')
+const loadedEssayId = ref(null)
 const essaysLoading = ref(false)
 const loading = ref(false)
 const creating = ref(false)
 const executing = ref(false)
 const polling = ref(false)
 const pageError = ref('')
+const appealVisible = ref(false)
+const appealFeedbackItem = ref(null)
 let pollTimer = null
-
 
 function statusType(status) { return { completed: 'success', failed: 'danger', processing: 'warning', pending: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '已完成', failed: '失败', processing: '执行中', pending: '待处理' }[status] || status }
@@ -179,7 +214,7 @@ async function loadEssays() {
   try {
     const response = await fetchEssays()
     essays.value = response.data.items
-    if (!selectedEssayId.value && essays.value.length) selectedEssayId.value = essays.value[0].id
+    if (!selectedEssayId.value) selectedEssayId.value = essays.value.find((item) => item.status !== 'draft')?.id || null
   } finally {
     essaysLoading.value = false
   }
@@ -191,11 +226,19 @@ async function loadEvaluations() {
   return evaluations.value
 }
 
+async function loadEssayContent(essayId) {
+  if (loadedEssayId.value === essayId && essayContent.value) return
+  const response = await fetchEssay(essayId)
+  essayContent.value = response.data.content
+  loadedEssayId.value = essayId
+}
+
 async function loadEvaluation(evaluationId, showLoading = true) {
   if (showLoading) loading.value = true
   try {
     const response = await fetchEvaluation(evaluationId)
     currentEvaluation.value = response.data
+    await loadEssayContent(response.data.essay_id)
     return response.data
   } catch (error) {
     pageError.value = error.message || '评价任务加载失败'
@@ -230,6 +273,7 @@ async function submitEvaluation() {
   try {
     const response = await createEvaluation(selectedEssayId.value)
     currentEvaluation.value = response.data
+    await loadEssayContent(response.data.essay_id)
     ElMessage.success(`评价任务 #${response.data.id} 已创建，后台开始执行`)
     await loadEvaluations()
     startPolling()
@@ -247,6 +291,7 @@ async function startCurrentEvaluation() {
   try {
     const response = await executeEvaluation(currentEvaluation.value.id)
     currentEvaluation.value = response.data
+    await loadEssayContent(response.data.essay_id)
     ElMessage.success('评价任务已启动')
     startPolling()
   } catch (error) {
@@ -254,6 +299,15 @@ async function startCurrentEvaluation() {
   } finally {
     executing.value = false
   }
+}
+
+function openAppeal(feedbackItem) {
+  appealFeedbackItem.value = feedbackItem
+  appealVisible.value = true
+}
+
+function handleAppealSubmitted() {
+  ElMessage.success('申诉记录已持久化，可在“我的申诉”中查看进度')
 }
 
 function startPolling() {
@@ -292,7 +346,7 @@ onUnmounted(stopPolling)
 .task-entry.is-active { border-color: var(--wm-primary); background: #f2f4ff; }
 .task-entry small { grid-column: 1 / -1; color: var(--wm-text-secondary); }
 .evaluation-main { min-width: 0; }
-.current-actions { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
+.current-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .page-error { margin-bottom: 14px; }
 .empty-evaluation { padding: 50px 20px; }
 

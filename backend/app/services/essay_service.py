@@ -1,14 +1,14 @@
-"""作文业务逻辑：列表可见范围、创建校验与详情归属校验。"""
+"""作文业务：题目、草稿、提交、编辑、历史与归属校验。"""
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.exceptions import AppError, NotFoundError
-from app.models.base import EssayStatus
+from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
+from app.models.base import EssayStatus, UserRole
 from app.models.essay import Essay, EssayPrompt
 from app.models.user import User
 from app.schemas.common import PageData
-from app.schemas.essay import EssayCreate, EssayDetail, EssayListItem
+from app.schemas.essay import EssayCreate, EssayDetail, EssayListItem, EssayPromptResponse, EssayUpdate
 from app.services.access_service import accessible_student_ids, assert_student_access
 
 
@@ -28,20 +28,18 @@ def _serialize_list_item(essay: Essay, student_name: str, prompt_title: str | No
     )
 
 
-def list_essays(
-    db: Session,
-    user: User,
-    page: int,
-    page_size: int,
-    status: str | None = None,
-) -> PageData[EssayListItem]:
+def list_prompts(db: Session) -> list[EssayPromptResponse]:
+    prompts = db.scalars(select(EssayPrompt).order_by(EssayPrompt.id)).all()
+    return [EssayPromptResponse.model_validate(prompt) for prompt in prompts]
+
+
+def list_essays(db: Session, user: User, page: int, page_size: int, status: str | None = None) -> PageData[EssayListItem]:
     conditions = []
     student_ids = accessible_student_ids(db, user)
     if student_ids is not None:
         conditions.append(Essay.student_id.in_(student_ids or [-1]))
     if status:
         conditions.append(Essay.status == status)
-
     total = db.scalar(select(func.count(Essay.id)).where(*conditions)) or 0
     statement = (
         select(Essay, User.display_name, EssayPrompt.title)
@@ -61,21 +59,48 @@ def list_essays(
     )
 
 
-def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
-    if len(payload.content) > settings.essay_max_chars:
-        raise AppError(f"作文正文不能超过 {settings.essay_max_chars} 字，当前为 {len(payload.content)} 字")
-    if payload.prompt_id is not None and db.get(EssayPrompt, payload.prompt_id) is None:
+def _validate_prompt(db: Session, prompt_id: int | None) -> None:
+    if prompt_id is not None and db.get(EssayPrompt, prompt_id) is None:
         raise NotFoundError("作文题目不存在")
+
+
+def _validate_content(content: str) -> None:
+    if len(content) > settings.essay_max_chars:
+        raise AppError(f"作文正文不能超过 {settings.essay_max_chars} 字，当前为 {len(content)} 字")
+
+
+def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
+    _validate_content(payload.content)
+    _validate_prompt(db, payload.prompt_id)
     essay = Essay(
         student_id=user.id,
         prompt_id=payload.prompt_id,
         content=payload.content,
         content_version=1,
         char_count=len(payload.content),
-        status=EssayStatus.SUBMITTED,
+        status=EssayStatus.DRAFT if payload.submission_mode == "draft" else EssayStatus.SUBMITTED,
         is_demo=user.is_demo,
     )
     db.add(essay)
+    db.commit()
+    db.refresh(essay)
+    return essay
+
+
+def update_essay(db: Session, user: User, essay_id: int, payload: EssayUpdate) -> Essay:
+    essay = get_essay_entity(db, user, essay_id)
+    if user.role != UserRole.STUDENT or essay.student_id != user.id:
+        raise PermissionDeniedError("只能修改本人的作文")
+    if essay.status != EssayStatus.DRAFT:
+        raise ConflictError("只有草稿可以编辑；已提交作文的评价历史保持不变")
+    _validate_content(payload.content)
+    _validate_prompt(db, payload.prompt_id)
+    if essay.content != payload.content:
+        essay.content_version += 1
+    essay.prompt_id = payload.prompt_id
+    essay.content = payload.content
+    essay.char_count = len(payload.content)
+    essay.status = EssayStatus.SUBMITTED if payload.submission_mode == "submit" else EssayStatus.DRAFT
     db.commit()
     db.refresh(essay)
     return essay

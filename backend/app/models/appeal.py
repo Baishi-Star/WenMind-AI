@@ -20,9 +20,10 @@ class Appeal(TimestampMixin, Base):
     reason_type: Mapped[str] = mapped_column(String(64), nullable=False)
     dimension: Mapped[str] = mapped_column(String(32), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="submitted", index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
+    items: Mapped[list["AppealItem"]] = relationship(back_populates="appeal")
     review_records: Mapped[list["ReviewRecord"]] = relationship(back_populates="appeal")
 
 
