@@ -75,7 +75,7 @@ class EvaluationOrchestrator:
             knowledge_context = [item.model_dump() for item in knowledge.results]
             previous: list[AgentResult] = []
             for agent_name, task, _dimension in AGENT_SEQUENCE:
-                previous.append(self._execute_agent(evaluation, essay_context, knowledge_context, previous, agent_name, task))
+                previous.append(self._execute_agent(evaluation, essay_context, knowledge_context, [], agent_name, task))
 
             feedback = self._execute_agent(
                 evaluation, essay_context, knowledge_context, previous, "feedback_agent", "综合各维度结果并生成修改与训练建议"
@@ -90,6 +90,14 @@ class EvaluationOrchestrator:
             )
             previous.extend([feedback, quality])
             quality = self._apply_backend_quality_checks(previous, quality)
+            scored_dimensions = {
+                result.dimension
+                for result in previous
+                if result.dimension in {"content", "organization", "language"} and result.diagnostic_score is not None
+            }
+            missing_dimensions = {"content", "organization", "language"} - scored_dimensions
+            if missing_dimensions:
+                raise AppError(f"评价结果缺少维度诊断值：{', '.join(sorted(missing_dimensions))}")
             self._save_results(evaluation, report, previous, feedback, quality)
             evaluation.status = EvaluationStatus.COMPLETED
             evaluation.error_message = None

@@ -11,6 +11,11 @@ from app.core.exceptions import AppError, ErrorCode
 from app.schemas.agent import AgentResult
 
 AGENT_PROMPT_VERSION = "agent-prompt-v1.0"
+AGENT_DIMENSIONS = {
+    "content_agent": "content",
+    "structure_agent": "organization",
+    "language_agent": "language",
+}
 
 AGENT_INSTRUCTIONS = {
     "topic_agent": "分析是否理解题目、是否回应核心任务、是否偏题以及立意是否明确，不单独计分。",
@@ -84,7 +89,7 @@ class AgentLLMClient:
         request_body = {
             "model": settings.llm_model,
             "temperature": 0.2,
-            "max_tokens": 2200,
+            "max_tokens": settings.llm_max_tokens,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(input_payload, ensure_ascii=False)},
@@ -107,6 +112,11 @@ class AgentLLMClient:
                 raise ValueError(f"agent_name 应为 {agent_name}")
             if result.status != "completed":
                 raise ValueError("Agent 返回 failed")
+            expected_dimension = AGENT_DIMENSIONS.get(agent_name)
+            if expected_dimension is not None:
+                result.dimension = expected_dimension
+                if result.diagnostic_score is None:
+                    raise ValueError(f"{agent_name} 必须返回 1-5 的 diagnostic_score")
             return result, payload.get("usage")
         except (httpx.HTTPError, KeyError, IndexError, TypeError) as exc:
             raise AppError("真实模型调用失败或返回结构不完整", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc

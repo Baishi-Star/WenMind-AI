@@ -52,6 +52,39 @@ def test_agent_output_schema_rejects_invalid_json_and_missing_fields():
     parsed = AgentLLMClient._extract_json('```json\n{"ok": true}\n```')
     assert parsed == {"ok": True}
 
+    normalized = AgentResult.model_validate(
+        {
+            "agent_name": "quality_agent",
+            "task": "审核",
+            "analysis": "发现结构化问题",
+            "quality_issues": [
+                {"type": "评价矛盾", "description": "分数与评语不一致", "involved_agents": ["content_agent"]}
+            ],
+        }
+    )
+    assert isinstance(normalized.quality_issues[0], str)
+    assert "评价矛盾" in normalized.quality_issues[0]
+    assert "content_agent" in normalized.quality_issues[0]
+
+    content_score = AgentResult.model_validate(
+        {
+            "agent_name": "content_agent",
+            "task": "内容评价",
+            "analysis": "分析",
+            "diagnostic_score": {"content": 3, "organization": 3, "language": 4},
+        }
+    )
+    assert content_score.diagnostic_score == 3
+    topic_score = AgentResult.model_validate(
+        {
+            "agent_name": "topic_agent",
+            "task": "审题",
+            "analysis": "分析",
+            "diagnostic_score": {"content": 3, "organization": 3, "language": 4},
+        }
+    )
+    assert topic_score.diagnostic_score is None
+
 
 def test_remote_model_timeout_retries_once_then_reports_503(monkeypatch):
     monkeypatch.setattr(settings, "llm_mock_mode", False)

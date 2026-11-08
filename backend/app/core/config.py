@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_timeout_seconds: int = 60
     llm_json_mode: bool = False
+    llm_max_tokens: int = 8192
 
     embedding_mode: str = "auto"
     embedding_base_url: str = ""
