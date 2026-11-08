@@ -136,16 +136,18 @@ uvicorn app.main:app --reload
 评价维度唯一约束等已在 Model 中定义。`evaluations` 分离保存 `original_total_score` 与
 `final_total_score`，为后续 AI 原始评价与教师复核双轨存储提供约束。
 
-| 角色 | 用户名 | 初始密码 | 显示名 |
+| 角色 | 用户名 | 初始密码来源 | 显示名 |
 |---|---|---|---|
-| 学生 | `demo_student` | `Demo@2026` | 演示学生一 |
-| 学生 | `demo_student2` | `Demo@2026` | 演示学生二 |
-| 学生 | `demo_student3` | `Demo@2026` | 演示学生三 |
-| 教师 | `demo_teacher` | `Demo@2026` | 演示教师 |
-| 管理员 | `demo_admin` | `Demo@2026` | 演示管理员 |
+| 学生 | `demo_student` | `DEMO_PASSWORD` | 演示学生一 |
+| 学生 | `demo_student2` | `DEMO_PASSWORD` | 演示学生二 |
+| 学生 | `demo_student3` | `DEMO_PASSWORD` | 演示学生三 |
+| 教师 | `demo_teacher` | `DEMO_PASSWORD` | 演示教师 |
+| 管理员 | `demo_admin` | `DEMO_PASSWORD` | 演示管理员 |
 
-上述账号、演示班级、3 个作文题目和 3 篇示例作文均设置 `is_demo=true`。
-密码仅用于本地演示，生产部署必须修改；数据库只保存 PBKDF2-SHA256 哈希。
+演示账号密码由后端 `.env` 的 `DEMO_PASSWORD` 提供，源码不再硬编码凭据。
+未配置该变量时，首次初始化会生成随机演示密码并输出到后端启动日志。
+当前本地开发库已按 `Demo@2026` 初始化，仅用于演示；生产部署必须重新设置并修改密码。
+上述账号、演示班级、3 个作文题目和 3 篇示例作文均设置 `is_demo=true`，数据库只保存 PBKDF2-SHA256 哈希。
 公开 `/auth/register` 只能注册学生，不能自助注册教师或管理员。
 
 ### 阶段 3 业务接口
@@ -328,15 +330,21 @@ HTTP 状态码与语义保持一致，异常堆栈只写入服务端日志。
 ## 七、测试与检查
 
 ```bash
-# 后端接口测试
+# 后端全量接口、业务、权限与异常测试
 cd backend
-pytest
+./.venv/Scripts/python.exe -m pytest
 
-# 前端代码检查与构建
+# 前端代码检查、生产构建、API 契约与浏览器冒烟
 cd frontend
 npm run lint
 npm run build
+npm run test:contract
+npm run test:e2e
 ```
+
+`test:contract` 会读取运行中的后端 OpenAPI，比对全部前端 API 调用路径。
+`test:e2e` 使用本机 Chrome/Edge 验证三角色登录退出、28 个角色路由、空白页和控制台错误，
+可通过 `E2E_CHROME`、`E2E_BASE_URL`、`E2E_DEMO_PASSWORD` 覆盖默认环境。
 
 ## 八、环境变量与安全约定
 

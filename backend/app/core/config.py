@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     auto_seed_demo: bool = True
 
     jwt_secret_key: str = ""
+    demo_password: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 120
     password_hash_iterations: int = 600000

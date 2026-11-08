@@ -56,7 +56,7 @@ def test_evaluation_is_created_as_pending_without_fake_scores(client, db_session
     assert data["original_total_score"] is None
     assert data["final_total_score"] is None
     assert data["rubric_version_id"] is not None
-    assert data["prompt_version"] == "v1.0"
+    assert data["prompt_version"] == "agent-prompt-v1.0"
 
     detail = client.get(f"/api/v1/evaluations/{data['id']}", headers=headers)
     assert detail.status_code == 200

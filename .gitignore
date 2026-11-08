@@ -44,6 +44,9 @@ backend/data/*.db-journal
 backend/data/uploads/
 backend/data/vector_index/
 
+# ---------- 质量审查产物 ----------
+.security/
+
 # ---------- CodeArts 工具目录 ----------
 .codeartsdoer/
 .codebase/

@@ -188,11 +188,16 @@ def _compose_profile(db: Session, student: User, points: list[GrowthPoint]) -> G
         CapabilityItem(
             key=dimension,
             label=DIMENSION_LABELS[dimension],
+            supported=True,
             available=dimension in averages,
             score=averages.get(dimension),
             sample_count=sum(1 for point in points if dimension in point.scores),
             source=DIMENSION_SOURCE[dimension],
-            note="优先采用教师复核后的最终诊断值；未复核评价使用 AI 原始诊断值。",
+            note=(
+                "优先采用教师复核后的最终诊断值；未复核评价使用 AI 原始诊断值。"
+                if dimension in averages
+                else "当前量规支持该维度计分，但尚无已完成评价，暂无可展示数值。"
+            ),
         )
         for dimension in SCORED_DIMENSIONS
     ]
@@ -201,6 +206,7 @@ def _compose_profile(db: Session, student: User, points: list[GrowthPoint]) -> G
             CapabilityItem(
                 key="topic",
                 label="审题能力",
+                supported=False,
                 available=False,
                 source="not_scored",
                 note="当前量规与审题 Agent 只提供定性审题分析，没有独立分值。为避免编造权重，本画像不生成审题数值趋势。",
@@ -208,6 +214,7 @@ def _compose_profile(db: Session, student: User, points: list[GrowthPoint]) -> G
             CapabilityItem(
                 key="argumentation",
                 label="论证能力",
+                supported=False,
                 available=False,
                 source="not_scored",
                 note="当前论证分析包含在内容维度内，未设置独立分值。本画像不拆分内容分伪造论证趋势。",

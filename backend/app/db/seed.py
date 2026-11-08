@@ -1,9 +1,11 @@
 """幂等演示数据：所有账号、班级、题目和作文均以 is_demo 明确标注。"""
 import json
+import secrets
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.security import hash_password
 from app.models.base import EssayStatus, UserRole
@@ -12,7 +14,15 @@ from app.models.rubric import RubricVersion
 from app.models.user import ClassRoom, Enrollment, User
 
 logger = get_logger(__name__)
-DEMO_PASSWORD = "Demo@2026"
+
+
+def _demo_password() -> str:
+    configured = settings.demo_password.strip()
+    if configured:
+        return configured
+    generated = secrets.token_urlsafe(12)
+    logger.warning("未配置 DEMO_PASSWORD，已生成本次演示密码：%s（仅首次初始化有效，请记录并自行修改）", generated)
+    return generated
 
 ESSAY_CONTENTS = [
     "信息每天都在涌来，真正稀缺的却不是消息，而是判断消息的能力。面对热搜与短视频，我们常常在不知不觉中被情绪推着前进，把别人的结论当作自己的思考。独立思考首先意味着愿意停顿：这条信息的来源可靠吗，它省略了哪些背景，我是否只因为观点符合预期就选择相信？\n其次，独立思考不等于拒绝一切他人意见。相反，它需要主动接触不同立场，在比较中修正自己的判断。若只把与自己相同的声音留在耳边，所谓坚持自我便可能只是另一种盲从。\n因此，我们既要保持求证的耐心，也要保留被事实说服的勇气。信息洪流无法阻挡，但一个人可以决定自己站在哪里。让判断慢一点，让证据多一步，我们才有可能在喧闹中守住清醒。",
@@ -26,12 +36,13 @@ def seed_demo_data(db: Session) -> bool:
         logger.info("检测到已有用户数据，跳过演示数据初始化")
         return False
 
+    seed_value = _demo_password()
     users = [
-        User(username="demo_student", password_hash=hash_password(DEMO_PASSWORD), display_name="演示学生一", role=UserRole.STUDENT, is_demo=True),
-        User(username="demo_student2", password_hash=hash_password(DEMO_PASSWORD), display_name="演示学生二", role=UserRole.STUDENT, is_demo=True),
-        User(username="demo_student3", password_hash=hash_password(DEMO_PASSWORD), display_name="演示学生三", role=UserRole.STUDENT, is_demo=True),
-        User(username="demo_teacher", password_hash=hash_password(DEMO_PASSWORD), display_name="演示教师", role=UserRole.TEACHER, is_demo=True),
-        User(username="demo_admin", password_hash=hash_password(DEMO_PASSWORD), display_name="演示管理员", role=UserRole.ADMIN, is_demo=True),
+        User(username="demo_student", password_hash=hash_password(seed_value), display_name="演示学生一", role=UserRole.STUDENT, is_demo=True),
+        User(username="demo_student2", password_hash=hash_password(seed_value), display_name="演示学生二", role=UserRole.STUDENT, is_demo=True),
+        User(username="demo_student3", password_hash=hash_password(seed_value), display_name="演示学生三", role=UserRole.STUDENT, is_demo=True),
+        User(username="demo_teacher", password_hash=hash_password(seed_value), display_name="演示教师", role=UserRole.TEACHER, is_demo=True),
+        User(username="demo_admin", password_hash=hash_password(seed_value), display_name="演示管理员", role=UserRole.ADMIN, is_demo=True),
     ]
     db.add_all(users)
     db.flush()

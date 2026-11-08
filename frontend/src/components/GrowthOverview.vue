@@ -36,20 +36,29 @@
           :class="{ 'is-unavailable': !item.available }"
         >
           <div class="capability-card__head">
-            <span>{{ item.label }}</span><el-tag
-              v-if="!item.available"
+            <span>{{ item.label }}</span>
+            <el-tag
+              v-if="!item.supported"
               size="small"
               type="info"
               effect="plain"
             >
               待量规支持
             </el-tag>
+            <el-tag
+              v-else-if="!item.available"
+              size="small"
+              type="warning"
+              effect="plain"
+            >
+              暂无数据
+            </el-tag>
           </div>
           <strong v-if="item.available">{{ item.score }}<small>/5</small></strong>
           <strong
             v-else
             class="is-empty"
-          >未独立计分</strong>
+          >{{ item.supported ? '暂无有效评价' : '未独立计分' }}</strong>
           <div
             v-if="item.available"
             class="capability-bar"

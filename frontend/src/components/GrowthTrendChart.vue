@@ -45,6 +45,7 @@ function buildOption() {
     grid: { left: 38, right: 22, top: 54, bottom: 38 },
     tooltip: {
       trigger: 'axis',
+      renderMode: 'richText',
       backgroundColor: 'rgba(17, 24, 39, 0.92)',
       borderWidth: 0,
       textStyle: { color: '#e5e7eb', fontSize: 11 },
@@ -54,11 +55,11 @@ function buildOption() {
         if (!point) return ''
         const lines = [`作文 #${point.essay_id} · ${point.essay_title}`]
         params.forEach((item) => {
-          if (item.value !== null && item.value !== undefined) lines.push(`${item.marker}${item.seriesName}：${item.value}/5`)
+          if (item.value !== null && item.value !== undefined) lines.push(`${item.seriesName}：${item.value}/5`)
         })
         lines.push(`评价来源：${point.review_status === 'teacher_confirmed' ? '教师复核确认' : 'AI 原始诊断（未复核）'}`)
         if (point.rubric_version_id) lines.push(`量规版本：#${point.rubric_version_id}`)
-        return lines.join('<br>')
+        return lines.join('\n')
       },
     },
     legend: {

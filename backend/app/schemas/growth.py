@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class CapabilityItem(BaseModel):
     key: str
     label: str
+    supported: bool
     available: bool
     score: float | None = None
     sample_count: int = 0

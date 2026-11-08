@@ -90,7 +90,7 @@ class AgentLLMClient:
                 {"role": "user", "content": json.dumps(input_payload, ensure_ascii=False)},
             ],
         }
-        if settings.llm_json_mode:
+        if settings.llm_json_mode or attempt > 0:
             request_body["response_format"] = {"type": "json_object"}
         try:
             with httpx.Client(timeout=settings.llm_timeout_seconds) as client:
