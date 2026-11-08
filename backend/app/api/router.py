@@ -7,6 +7,7 @@ from app.api import (
     classes,
     essays,
     evaluations,
+    growth,
     health,
     knowledge,
     questions,
@@ -25,3 +26,4 @@ api_router.include_router(questions.router)
 api_router.include_router(appeals.router)
 api_router.include_router(teacher_reviews.router)
 api_router.include_router(teacher_rules.router)
+api_router.include_router(growth.router)

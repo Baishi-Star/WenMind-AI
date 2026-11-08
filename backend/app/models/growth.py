@@ -28,6 +28,19 @@ class GrowthSnapshot(TimestampMixin, Base):
     dimension_scores_json: Mapped[str] = mapped_column(Text, nullable=False)
 
 
+class TrainingTaskDetail(TimestampMixin, Base):
+    __tablename__ = "training_task_details"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("training_tasks.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
+    )
+    objective: Mapped[str] = mapped_column(Text, nullable=False)
+    ability: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_evaluation_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    result_text: Mapped[str | None] = mapped_column(Text)
+
+
 class TrainingTask(TimestampMixin, Base):
     __tablename__ = "training_tasks"
     __table_args__ = (Index("ix_training_tasks_student_status", "student_id", "status"),)

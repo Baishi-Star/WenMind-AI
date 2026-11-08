@@ -6,15 +6,14 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 7 —— 教师人工复核与评价规则优化已完成。**
-已具备 27 张 SQLite 数据表、学生申诉工作台、教师人工复核、六类争议归因、真实复核统计、
-规则建议生成、教师审批、回归测试和量规版本发布。
+**当前进度：阶段 8 —— 学生成长画像与教学分析已完成。**
+已具备 28 张 SQLite 数据表、真实评价驱动的成长趋势、教师复核优先的双轨口径、
+个性化训练任务与完成结果、教师班级学情分析，以及教师进入学生个人成长详情。
 
-> **真实性边界**：当前验收使用 **Mock 规则引擎**，不冒充真实模型语义推理。
-> AI 原始维度分和反馈文本始终保留，教师修改通过叠加表独立存储；教师调整只写 `final_score`。
-> 统计仅来自教师确认的复核标签，申诉量不等同于模型错误率，小样本会明确提示。
-> 回归测试当前只验证规则结构、维度上限和历史样本存在性，**不等于语义回归通过**。
-> 本阶段已真实生成并发布 `v1.1`，`v1.0` 归档保留，新评价已改为绑定 `v1.1`。
+> **真实性边界**：成长趋势全部来自数据库中的真实评价点，不使用随机数；少于 3 篇明确显示“数据积累中”。
+> 教师复核后的最终诊断优先于 AI 原始诊断，未复核评价标记 `ai_unreviewed`；跨量规版本时提示版本差异。
+> 当前量规只对内容、组织、语言三项计分，**审题与论证不编造独立数值**，页面明确显示“待量规支持”。
+> 训练建议由近期弱项规则生成，不是 AI 推荐结论；班级统计同样基于真实评价、复核和确认标签。
 
 ## 快速启动（Windows 推荐）
 
@@ -38,7 +37,7 @@
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
 | 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 27 张表、自动建表与幂等演示数据已完成 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 28 张表、自动建表与幂等演示数据已完成 |
 | 认证与权限 | PBKDF2-SHA256、PyJWT | 注册登录、角色与资源归属校验已完成 |
 | 模型接入 | OpenAI-compatible API + Mock 规则引擎 | 多 Agent 已接入，当前验收使用显式 Mock 模式 |
 
@@ -259,6 +258,28 @@ uvicorn app.main:app --reload
 `POST /teacher/rule-proposals/{id}/approve|reject`、`GET /teacher/rubric-versions`、
 `POST /teacher/rubric-versions/{id}/regression-test|publish`。
 
+### 成长画像、训练与班级分析（阶段 8）
+
+成长数据来自 `evaluations`、`dimension_scores`、`appeals`、`review_records`、`feedback_items` 和训练记录：
+
+- 有教师复核时，优先采用复核快照 `revised_score_json` 中的教师最终值。
+- 无教师复核时使用 AI 原始诊断值，并明确标记“AI 未复核”。
+- 每条趋势点保留 `evaluation_id`、`essay_id`、量规版本、复核状态和复核结论。
+- 少于 3 篇有效评价返回 `data_accumulating`，页面显示“数据积累中”，不预测长期趋势。
+- 样本跨越多个量规版本时提示版本差异，不把规则变化全部解释为能力变化。
+- 内容、组织、语言输出 1–5 趋势；审题、论证没有独立量规分值，返回 `not_scored`，不拆分或伪造数值。
+- 成长画像是可重建缓存：`growth_profiles` 保存当前画像，`growth_snapshots` 按评价保存真实趋势快照。
+
+个性化训练由近期有效评价的弱项规则生成，任务包含目标、推荐理由、训练内容、来源评价和完成状态。
+学生提交训练结果后写入 `training_task_details.result_text`，并计入成长画像的训练完成统计。
+
+教师班级分析接口：`GET /teacher/classes/{class_id}/analytics`，统计班级维度均值、分布、薄弱比例、
+学生样本、教师确认争议、AI 反馈问题分布、申诉状态和规则化教学建议。
+教师可通过班级学生列表进入 `/teacher/students/{student_id}/growth` 查看个人成长档案。
+
+新增接口：`GET /growth/profile`、`GET /growth/history`、`GET /training/tasks`、
+`POST /training/tasks/{task_id}/complete`、`GET /teacher/classes/{class_id}/analytics`。
+
 ## 五、前端启动
 
 ```bash
@@ -329,5 +350,4 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 下一阶段（成长与班级分析） | 成长画像、训练推荐、班级学情分析与跨评价统计 |
-| 阶段 8 | 测试补全、部署文档、演示数据与提交打包 |
+| 下一阶段（赛事交付） | 自动化测试补全、部署与演示文档、录屏脚本、ZIP 结构检查和过程留证 |

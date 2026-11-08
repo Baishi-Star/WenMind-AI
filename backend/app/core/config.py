@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     rule_proposal_min_cases: int = 3
     rule_proposal_window_days: int = 30
 
+    growth_min_samples: int = 3
+    growth_recent_window: int = 3
+    growth_weak_threshold: float = 3.5
+
+    growth_min_samples: int = 3
+    growth_recent_window: int = 3
+    growth_weak_threshold: float = 3.5
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

@@ -4,7 +4,7 @@ from app.models.appeal import Appeal, ReviewRecord
 from app.models.base import Base, Dimension, EssayStatus, EvaluationStatus, TimestampMixin, UserRole, utc_now
 from app.models.essay import Essay, EssayPrompt
 from app.models.evaluation import AgentRun, DimensionScore, Evaluation, FeedbackItem
-from app.models.growth import GrowthProfile, GrowthSnapshot, TrainingTask
+from app.models.growth import GrowthProfile, GrowthSnapshot, TrainingTask, TrainingTaskDetail
 from app.models.knowledge import KbChunk, KbDocument
 from app.models.rule_governance import RuleProposalDetail, RubricVersionGovernance
 from app.models.rubric import RubricVersion, RuleProposal
@@ -44,6 +44,7 @@ __all__ = [
     "TeacherFeedbackItem",
     "TimestampMixin",
     "TrainingTask",
+    "TrainingTaskDetail",
     "User",
     "UserRole",
     "utc_now",

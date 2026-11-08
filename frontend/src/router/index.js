@@ -23,6 +23,7 @@ const teacherRoutes = [
   { path: 'reviews', name: 'teacher-reviews', title: '评价复核', component: () => import('@/views/teacher/EvaluationReviewView.vue') },
   { path: 'appeals', name: 'teacher-appeals', title: '申诉管理', component: () => import('@/views/teacher/AppealManagementView.vue') },
   { path: 'analytics', name: 'teacher-analytics', title: '班级学情分析', component: () => import('@/views/teacher/ClassAnalyticsView.vue') },
+  { path: 'students/:studentId/growth', name: 'teacher-student-growth', title: '学生成长详情', component: () => import('@/views/teacher/StudentGrowthView.vue') },
   { path: 'disputes', name: 'teacher-disputes', title: '争议分析', component: () => import('@/views/teacher/DisputeAnalysisView.vue') },
   { path: 'rubrics', name: 'teacher-rubrics', title: '规则版本管理', component: () => import('@/views/teacher/RubricManagementView.vue') },
 ]
