@@ -6,8 +6,10 @@ from app.models.essay import Essay, EssayPrompt
 from app.models.evaluation import AgentRun, DimensionScore, Evaluation, FeedbackItem
 from app.models.growth import GrowthProfile, GrowthSnapshot, TrainingTask
 from app.models.knowledge import KbChunk, KbDocument
+from app.models.rule_governance import RuleProposalDetail, RubricVersionGovernance
 from app.models.rubric import RubricVersion, RuleProposal
 from app.models.student_interaction import AppealItem, EvaluationQuestion
+from app.models.teacher_review import FeedbackReviewChange, ReviewIssueTag, TeacherFeedbackItem
 from app.models.user import ClassRoom, Enrollment, User
 
 __all__ = [
@@ -27,14 +29,19 @@ __all__ = [
     "EvaluationReport",
     "EvaluationStatus",
     "FeedbackItem",
+    "FeedbackReviewChange",
     "GrowthProfile",
     "GrowthSnapshot",
     "KbChunk",
     "KbDocument",
     "RetrievalLog",
+    "ReviewIssueTag",
     "ReviewRecord",
     "RubricVersion",
+    "RubricVersionGovernance",
     "RuleProposal",
+    "RuleProposalDetail",
+    "TeacherFeedbackItem",
     "TimestampMixin",
     "TrainingTask",
     "User",

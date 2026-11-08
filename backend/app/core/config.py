@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     knowledge_chunk_target_chars: int = 300
     knowledge_chunk_max_chars: int = 500
 
+    rule_proposal_min_cases: int = 3
+    rule_proposal_window_days: int = 30
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

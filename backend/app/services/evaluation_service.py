@@ -38,7 +38,9 @@ def _loads(value: str | None, fallback):
 
 def _select_rubric_id(db: Session, essay: Essay) -> int:
     if essay.prompt and essay.prompt.rubric_version_id:
-        return essay.prompt.rubric_version_id
+        bound_rubric = db.get(RubricVersion, essay.prompt.rubric_version_id)
+        if bound_rubric is not None and bound_rubric.status == "published":
+            return bound_rubric.id
     rubric_id = db.scalar(
         select(RubricVersion.id).where(RubricVersion.status == "published").order_by(RubricVersion.id.desc()).limit(1)
     )
