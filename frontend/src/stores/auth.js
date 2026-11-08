@@ -1,16 +1,18 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
+import { login as loginRequest } from '@/api/auth'
 import { getRoleHome, ROLES } from '@/config/portal'
 
-const SESSION_KEY = 'wenmind_demo_session'
+const TOKEN_KEY = 'wenmind_token'
+const SESSION_KEY = 'wenmind_auth_session'
+const LEGACY_SESSION_KEY = 'wenmind_demo_session'
 
 function readSession() {
   try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const session = JSON.parse(raw)
-    return ROLES[session.role] ? session : null
+    if (!localStorage.getItem(TOKEN_KEY)) return null
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
+    return ROLES[session?.user?.role] ? session : null
   } catch {
     localStorage.removeItem(SESSION_KEY)
     return null
@@ -20,32 +22,28 @@ function readSession() {
 export const useAuthStore = defineStore('auth', () => {
   const session = ref(readSession())
 
-  // 当前阶段为前端演示角色会话，后端 JWT 认证接入后此标识会移除
-  const isDemoSession = computed(() => Boolean(session.value))
-  const isAuthenticated = computed(() => Boolean(session.value?.role))
-  const role = computed(() => session.value?.role || '')
+  const isDemoSession = computed(() => Boolean(session.value?.user?.is_demo))
+  const isAuthenticated = computed(() => Boolean(session.value?.user?.role && localStorage.getItem(TOKEN_KEY)))
+  const role = computed(() => session.value?.user?.role || '')
   const roleInfo = computed(() => ROLES[role.value] || null)
-  const displayName = computed(() => roleInfo.value?.demoName || '访客')
+  const displayName = computed(() => session.value?.user?.display_name || '访客')
   const homePath = computed(() => getRoleHome(role.value))
 
-  function loginAsRole(nextRole) {
-    if (!ROLES[nextRole]) {
-      throw new Error('不支持的演示角色')
-    }
-    session.value = {
-      role: nextRole,
-      mode: 'demo',
-      loginAt: new Date().toISOString(),
-    }
+  async function login(username, password) {
+    const response = await loginRequest({ username, password })
+    const { access_token: accessToken, user } = response.data
+    localStorage.setItem(TOKEN_KEY, accessToken)
+    session.value = { user, loginAt: new Date().toISOString() }
     localStorage.setItem(SESSION_KEY, JSON.stringify(session.value))
-    return getRoleHome(nextRole)
+    localStorage.removeItem(LEGACY_SESSION_KEY)
+    return getRoleHome(user.role)
   }
 
   function logout() {
     session.value = null
+    localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(SESSION_KEY)
-    // 后端认证接入前不遗留任何演示令牌
-    localStorage.removeItem('wenmind_token')
+    localStorage.removeItem(LEGACY_SESSION_KEY)
   }
 
   return {
@@ -56,7 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
     roleInfo,
     displayName,
     homePath,
-    loginAsRole,
+    login,
     logout,
   }
 })

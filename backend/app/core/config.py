@@ -34,6 +34,15 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_timeout_seconds: int = 60
 
+    embedding_mode: str = "auto"
+    embedding_base_url: str = ""
+    embedding_api_key: str = ""
+    embedding_model: str = ""
+    embedding_timeout_seconds: int = 60
+    knowledge_upload_max_mb: int = 10
+    knowledge_chunk_target_chars: int = 300
+    knowledge_chunk_max_chars: int = 500
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

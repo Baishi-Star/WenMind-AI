@@ -6,13 +6,15 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 3 —— 后端基础、数据库与真实认证已完成。**
-已具备前后端骨架、三角色前端页面框架、18 张 SQLite 数据表、自动建表与幂等演示数据、
-PBKDF2 密码哈希、JWT 登录、后端角色与资源归属校验，以及作文、班级、评价任务基础 API。
+**当前进度：阶段 4 —— 知识库与 RAG 检索已完成。**
+已具备 18 张 SQLite 数据表、真实 JWT 登录、后端角色与资源归属校验、作文/班级/评价基础 API，
+以及 PDF/DOCX/TXT 解析、文本切片、独立 Embedding 适配层、FAISS 持久化检索和管理端知识库页面。
+前端登录已切换为真实账号密码认证，退出会清理本地令牌与会话。
 
-> **真实性边界**：后端认证和业务数据已真实持久化；前端 `/login` 目前仍是**演示角色入口**，
-> 尚未切换为真实账号密码登录，退出时只清理前端演示会话。业务页面仍标注"界面框架 · 待接入后端"，
-> 下一阶段将接入真实认证。评价接口本阶段只创建 `pending` 任务，**不生成或展示虚构 AI 分数**。
+> **真实性边界**：项目提供的《知识库 标准(1).docx》已实际上传、解析并索引，共 5 个切片；
+> 未修改原文评价标准含义，也未补造评分权重或等级分数映射。当前未配置外部 Embedding，
+> 系统明确使用 **TF-IDF 词汇向量 + FAISS（非语义检索）**，不使用随机向量冒充语义能力。
+> 评价任务仍只创建 `pending` 记录，多 Agent 评分在后续阶段实现。
 
 ## 快速启动（Windows 推荐）
 
@@ -164,6 +166,30 @@ uvicorn app.main:app --reload
 | GET | `/evaluations/{evaluation_id}` | 评价任务状态与双轨分数字段 |
 | GET | `/health` | 健康检查 |
 
+### 知识库与 RAG（阶段 4）
+
+处理链路：`文件上传 → 格式/大小校验 → PDF/DOCX/TXT 解析 → 文本清洗 → 段落优先切片 → 向量化 → FAISS 索引 → Top-K 检索`。
+原始文件保存在 `backend/data/uploads/`，索引与向量器保存在 `backend/data/vector_index/`，
+文档和切片元数据保存在 SQLite。FAISS 索引通过内存序列化读写，兼容当前含中文的 Windows 路径。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/knowledge/upload` | 管理员上传并同步完成解析、切片和索引 |
+| GET | `/knowledge/documents` | 文档、解析状态、切片数量和失败原因 |
+| DELETE | `/knowledge/documents/{document_id}` | 删除文档、切片并重建剩余索引 |
+| POST | `/knowledge/search` | Top-K 检索，可选 `evaluation_id` 关联评价任务 |
+| GET | `/knowledge/status` | 索引数量、持久化和向量化模式 |
+
+检索结果包含 `document_id`、`document_name`、`chunk_id`、`content`、`score` 和 `metadata`，
+`metadata` 中保留来源与页码或章节。`score` 是相似度分数，不是准确率或可信度百分比。
+
+向量化模式由环境变量控制：
+
+- `EMBEDDING_MODE=auto`：远程配置完整时使用 OpenAI-compatible Embedding，否则使用本地 TF-IDF。
+- `EMBEDDING_MODE=remote`：强制远程，配置或调用失败会明确报错，不静默降级。
+- `EMBEDDING_MODE=local_tfidf`：本地字符 n-gram 词汇向量 + FAISS，**明确标记为非语义检索**。
+- 远程配置项：`EMBEDDING_BASE_URL`、`EMBEDDING_API_KEY`、`EMBEDDING_MODEL`，密钥只放后端 `.env`。
+
 ## 五、前端启动
 
 ```bash
@@ -234,9 +260,7 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 下一阶段（前后端联调） | 前端真实账号密码登录、Token 状态管理、作文/班级/评价 API 接入 |
-| 阶段 4 | Orchestrator 与审题/内容/结构/语言/综合/质量审核 Agent |
-| 阶段 5 | 知识库上传解析、FAISS 检索与检索测试页 |
+| 阶段 5 | LLM 适配层、Orchestrator、多专业 Agent、证据校验与评价报告 |
 | 阶段 6 | 评价报告、原文证据校验与高亮、学生申诉、教师复核 |
 | 阶段 7 | 争议统计、规则版本管理、成长画像、训练推荐、班级分析 |
 | 阶段 8 | 测试补全、部署文档、演示数据与提交打包 |

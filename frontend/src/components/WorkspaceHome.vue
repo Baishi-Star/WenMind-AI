@@ -164,9 +164,9 @@ const quickLinks = computed(() => (NAVIGATIONS[props.role] || []).filter((item) 
 
 const integrationItems = computed(() => [
   { label: '后端健康检查接口', done: true },
-  { label: '账号密码认证与 JWT', done: false },
-  { label: `${roleInfo.value.name}端业务数据接口`, done: false },
-  { label: '数据库持久化记录', done: false },
+  { label: '账号密码认证与 JWT', done: true },
+  { label: props.role === 'admin' ? '知识库 RAG 业务接口' : `${roleInfo.value.name}端业务数据接口`, done: props.role === 'admin' },
+  { label: '数据库持久化记录', done: true },
 ])
 
 function go(path) {

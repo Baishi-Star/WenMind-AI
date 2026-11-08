@@ -46,6 +46,13 @@ request.interceptors.response.use(
     normalized.code = body?.code ?? error.response?.status ?? -1
     normalized.requestId = body?.request_id
     normalized.status = error.response?.status
+    if (normalized.status === 401) {
+      localStorage.removeItem('wenmind_token')
+      localStorage.removeItem('wenmind_auth_session')
+      if (window.location.pathname !== '/login') {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
+      }
+    }
     if (!error.config?.silent) {
       ElMessage.error(message)
     }

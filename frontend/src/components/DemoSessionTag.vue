@@ -1,11 +1,11 @@
 <template>
   <el-tooltip
-    content="当前为前端演示角色会话，用于界面与路由演示；后端账号密码认证将在后续阶段接入。"
+    content="当前使用预置演示账号，但登录、JWT 和接口权限均由后端真实校验；业务操作会写入 SQLite。"
     placement="bottom"
   >
     <span class="demo-tag">
       <span class="demo-tag__dot" />
-      演示会话 · 后端认证待接入
+      演示账号 · 真实 JWT 已接入
     </span>
   </el-tooltip>
 </template>

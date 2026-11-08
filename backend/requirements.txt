@@ -9,5 +9,13 @@ python-dotenv==1.1.0
 httpx==0.28.1
 PyJWT==2.10.1
 
+# 知识库与 RAG（版本已在本机 Python 3.13 环境实际安装验证）
+PyMuPDF==2.1
+python-docx==1.2.0
+faiss-cpu==1.15.1
+scikit-learn==1.9.1
+joblib==1.6.0
+python-multipart==0.0.33
+
 # 测试
 pytest==8.3.5
