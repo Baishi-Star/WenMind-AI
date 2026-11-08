@@ -1,4 +1,5 @@
 """统一导出所有模型，确保建表前完整注册到 Base.metadata。"""
+from app.models.agent_evaluation import EvaluationReport, RetrievalLog
 from app.models.appeal import Appeal, ReviewRecord
 from app.models.base import Base, Dimension, EssayStatus, EvaluationStatus, TimestampMixin, UserRole, utc_now
 from app.models.essay import Essay, EssayPrompt
@@ -20,12 +21,14 @@ __all__ = [
     "EssayPrompt",
     "EssayStatus",
     "Evaluation",
+    "EvaluationReport",
     "EvaluationStatus",
     "FeedbackItem",
     "GrowthProfile",
     "GrowthSnapshot",
     "KbChunk",
     "KbDocument",
+    "RetrievalLog",
     "ReviewRecord",
     "RubricVersion",
     "RuleProposal",

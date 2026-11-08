@@ -6,15 +6,15 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 4 —— 知识库与 RAG 检索已完成。**
-已具备 18 张 SQLite 数据表、真实 JWT 登录、后端角色与资源归属校验、作文/班级/评价基础 API，
-以及 PDF/DOCX/TXT 解析、文本切片、独立 Embedding 适配层、FAISS 持久化检索和管理端知识库页面。
-前端登录已切换为真实账号密码认证，退出会清理本地令牌与会话。
+**当前进度：阶段 5 —— 多智能体作文评价系统已完成。**
+已具备 20 张 SQLite 数据表、真实 JWT、知识库 RAG、Orchestrator、6 个专业 Agent、
+结构化输出校验、原文证据核验、后台任务状态机、综合报告与质量审核，以及前端过程可视化页面。
+新建评价自动通过 FastAPI BackgroundTasks 执行，旧的待处理或失败任务可手动启动。
 
-> **真实性边界**：项目提供的《知识库 标准(1).docx》已实际上传、解析并索引，共 5 个切片；
-> 未修改原文评价标准含义，也未补造评分权重或等级分数映射。当前未配置外部 Embedding，
-> 系统明确使用 **TF-IDF 词汇向量 + FAISS（非语义检索）**，不使用随机向量冒充语义能力。
-> 评价任务仍只创建 `pending` 记录，多 Agent 评分在后续阶段实现。
+> **真实性边界**：当前验收使用 **Mock 规则引擎**，只验证调度、检索、结构化结果、证据和持久化，
+> 不冒充真实模型语义推理。真实模型通过 OpenAI-compatible API 接入，需配置 `LLM_*` 并关闭 Mock。
+> 内容、组织、语言仅输出 1–5 诊断等级，**不计算加权总分、不编造正式评分区间**；
+> AI 评价是教学诊断性参考，原始诊断值与教师最终复核值分字段保存。
 
 ## 快速启动（Windows 推荐）
 
@@ -38,9 +38,9 @@
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
 | 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 18 张表、自动建表与幂等演示数据已完成 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 20 张表、自动建表与幂等演示数据已完成 |
 | 认证与权限 | PBKDF2-SHA256、PyJWT | 注册登录、角色与资源归属校验已完成 |
-| 模型接入 | OpenAI-compatible API 适配层 | 后续 Agent 阶段实现，当前默认 Mock 模式 |
+| 模型接入 | OpenAI-compatible API + Mock 规则引擎 | 多 Agent 已接入，当前验收使用显式 Mock 模式 |
 
 ## 二、目录结构
 
@@ -190,6 +190,32 @@ uvicorn app.main:app --reload
 - `EMBEDDING_MODE=local_tfidf`：本地字符 n-gram 词汇向量 + FAISS，**明确标记为非语义检索**。
 - 远程配置项：`EMBEDDING_BASE_URL`、`EMBEDDING_API_KEY`、`EMBEDDING_MODEL`，密钥只放后端 `.env`。
 
+### 多 Agent 作文评价（阶段 5）
+
+执行链路：`评价任务 → RAG 检索 → 审题 Agent → 内容 Agent → 结构 Agent → 语言 Agent → 综合反馈 Agent → 质量审核 Agent → 后端证据核验 → 结果入库`。
+所有 Agent 输出必须通过 Pydantic Schema；真实模型输出解析或校验失败时最多重试一次。
+
+| 能力 | 实现 |
+|---|---|
+| 任务状态 | `pending → processing → completed / failed`，记录开始、完成与错误信息 |
+| 运行记录 | `agent_runs` 保存 Agent、模型、Prompt 版本、耗时、状态、输入摘要和结构化输出 |
+| 检索记录 | `retrieval_logs` 保存查询、检索模式及 Top-K 来源 |
+| 综合报告 | `evaluation_reports` 保存执行模式、总结、训练建议和质量审核 |
+| 证据核验 | 精确位置通过；唯一匹配可修正；多匹配或不存在标 `unverified` |
+| 评分边界 | 仅 1–5 诊断等级，无加权总分；教师复核前 `final_score` 为空 |
+
+| 模式 | 模型与输出 | Token 用量 | 用途 |
+|---|---|---|---|
+| `LLM_MOCK_MODE=true` | `mock-rule-based-v1`，可解释文本规则，明确非语义推理 | `null`，不伪造 | 本地流程测试与故障降级演示 |
+| `LLM_MOCK_MODE=false` | `LLM_MODEL` 指定的真实 OpenAI-compatible 模型 | 保存真实 API `usage` | 真实语义评价，仍须证据校验和教师复核 |
+
+真实模型配置：`LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL`、`LLM_TIMEOUT_SECONDS`。
+`LLM_JSON_MODE=true` 可在供应商支持时启用 JSON response format；密钥只允许放在后端 `.env`。
+
+接口新增：`GET /evaluations`、`POST /evaluations/{essay_id}`、`POST /evaluations/{evaluation_id}/execute`、
+`GET /evaluations/{evaluation_id}`、`GET /evaluations/{evaluation_id}/runs`、
+`GET /evaluations/{evaluation_id}/retrievals`。
+
 ## 五、前端启动
 
 ```bash
@@ -260,7 +286,6 @@ npm run build
 
 | 阶段 | 内容 |
 |---|---|
-| 阶段 5 | LLM 适配层、Orchestrator、多专业 Agent、证据校验与评价报告 |
-| 阶段 6 | 评价报告、原文证据校验与高亮、学生申诉、教师复核 |
+| 阶段 6 | 学生申诉、教师复核、评价证据高亮与申诉进度展示 |
 | 阶段 7 | 争议统计、规则版本管理、成长画像、训练推荐、班级分析 |
 | 阶段 8 | 测试补全、部署文档、演示数据与提交打包 |
