@@ -53,9 +53,8 @@ class Settings(BaseSettings):
     growth_recent_window: int = 3
     growth_weak_threshold: float = 3.5
 
-    growth_min_samples: int = 3
-    growth_recent_window: int = 3
-    growth_weak_threshold: float = 3.5
+    task_max_questions: int = 20
+    task_max_due_days: int = 180
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

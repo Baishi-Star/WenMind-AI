@@ -54,6 +54,7 @@ export const ROLES = {
 export const NAVIGATIONS = {
   student: [
     { path: '/student/dashboard', title: '学生首页', icon: Odometer, group: '学习概览' },
+    { path: '/student/tasks', title: '写作任务', icon: Files, group: '写作与评价' },
     { path: '/student/essays', title: '我的作文', icon: Files, group: '写作与评价' },
     { path: '/student/essays/new', title: '作文提交', icon: EditPen, group: '写作与评价' },
     { path: '/student/evaluations', title: 'AI 评价结果', icon: DocumentChecked, group: '写作与评价' },

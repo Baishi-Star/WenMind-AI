@@ -11,6 +11,8 @@ from app.api import (
     health,
     knowledge,
     questions,
+    submissions,
+    tasks,
     teacher_reviews,
     teacher_rules,
 )
@@ -27,3 +29,5 @@ api_router.include_router(appeals.router)
 api_router.include_router(teacher_reviews.router)
 api_router.include_router(teacher_rules.router)
 api_router.include_router(growth.router)
+api_router.include_router(tasks.router)
+api_router.include_router(submissions.router)

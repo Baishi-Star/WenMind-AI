@@ -8,7 +8,7 @@ set "BACKEND_DIR=%~dp0backend"
 set "FRONTEND_DIR=%~dp0frontend"
 set "BACKEND_PY=%BACKEND_DIR%\.venv\Scripts\python.exe"
 set "BACKEND_URL=http://127.0.0.1:8000/api/v1/health"
-set "FRONTEND_URL=http://127.0.0.1:5173/login"
+set "FRONTEND_URL=http://127.0.0.1:5173/"
 
 echo ============================================================
 echo   WenMind AI 文思智评 - 前后端一键启动
@@ -111,8 +111,9 @@ goto :wait_frontend
 echo [成功] 前端页面可以访问。
 echo.
 echo ============================================================
-echo   启动完成，即将打开演示角色登录页。
-echo   前端：http://127.0.0.1:5173/login
+echo   启动完成，即将打开产品首页。
+echo   前端首页：http://127.0.0.1:5173/
+echo   演示登录：http://127.0.0.1:5173/login
 echo   后端：http://127.0.0.1:8000/api/v1/health
 echo   接口文档：http://127.0.0.1:8000/docs
 echo.

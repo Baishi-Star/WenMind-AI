@@ -9,8 +9,10 @@ from app.models.knowledge import KbChunk, KbDocument
 from app.models.rule_governance import RuleProposalDetail, RubricVersionGovernance
 from app.models.rubric import RubricVersion, RuleProposal
 from app.models.student_interaction import AppealItem, EvaluationQuestion
+from app.models.submission import FileKind, Submission, SubmissionAnswer, SubmissionFile, SubmissionStatus
 from app.models.teacher_review import FeedbackReviewChange, ReviewIssueTag, TeacherFeedbackItem
 from app.models.user import ClassRoom, Enrollment, User
+from app.models.writing_task import TaskQuestion, TaskSource, TaskStatus, TaskTarget, TargetType, WritingTask
 
 __all__ = [
     "AgentRun",
@@ -30,6 +32,7 @@ __all__ = [
     "EvaluationStatus",
     "FeedbackItem",
     "FeedbackReviewChange",
+    "FileKind",
     "GrowthProfile",
     "GrowthSnapshot",
     "KbChunk",
@@ -41,6 +44,15 @@ __all__ = [
     "RubricVersionGovernance",
     "RuleProposal",
     "RuleProposalDetail",
+    "Submission",
+    "SubmissionAnswer",
+    "SubmissionFile",
+    "SubmissionStatus",
+    "TaskQuestion",
+    "TaskSource",
+    "TaskStatus",
+    "TaskTarget",
+    "TargetType",
     "TeacherFeedbackItem",
     "TimestampMixin",
     "TrainingTask",
@@ -48,4 +60,5 @@ __all__ = [
     "User",
     "UserRole",
     "utc_now",
+    "WritingTask",
 ]

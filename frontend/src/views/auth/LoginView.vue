@@ -237,30 +237,30 @@ async function enterPortal() {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  color: #ededf2;
+  color: var(--wm-text-main);
   background:
-    radial-gradient(circle at 75% 20%, rgba(99, 102, 241, 0.09), transparent 35%),
-    radial-gradient(circle at 10% 85%, rgba(20, 184, 166, 0.07), transparent 30%),
-    linear-gradient(145deg, #07090f 0%, #090b13 45%, #070a10 100%);
+    radial-gradient(circle at 78% 16%, rgba(99, 102, 241, 0.15), transparent 34%),
+    radial-gradient(circle at 8% 88%, rgba(13, 148, 136, 0.11), transparent 30%),
+    linear-gradient(145deg, #f8faff 0%, #eef2ff 48%, #f1fbfa 100%);
 }
 
 .login-page__grid {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.32;
+  opacity: 0.6;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    linear-gradient(rgba(29, 78, 216, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 78, 216, 0.045) 1px, transparent 1px);
   background-size: 56px 56px;
-  mask-image: linear-gradient(to bottom, black, transparent 90%);
+  mask-image: linear-gradient(to bottom, black, transparent 92%);
 }
 
 .login-page__glow {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  filter: blur(4px);
+  filter: blur(5px);
   animation: breathe 9s ease-in-out infinite;
 }
 
@@ -269,7 +269,7 @@ async function enterPortal() {
   height: 560px;
   top: -250px;
   right: -100px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.16), transparent 68%);
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.16), transparent 68%);
 }
 
 .login-page__glow--teal {
@@ -277,7 +277,7 @@ async function enterPortal() {
   height: 460px;
   bottom: -240px;
   left: -160px;
-  background: radial-gradient(circle, rgba(20, 184, 166, 0.11), transparent 68%);
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.13), transparent 68%);
   animation-delay: -4s;
 }
 
@@ -299,7 +299,7 @@ async function enterPortal() {
 .login-brand img {
   width: 40px;
   height: 40px;
-  filter: drop-shadow(0 6px 16px rgba(99, 102, 241, 0.24));
+  filter: drop-shadow(0 6px 16px rgba(79, 70, 229, 0.2));
 }
 
 .login-brand span {
@@ -309,13 +309,14 @@ async function enterPortal() {
 }
 
 .login-brand strong {
+  color: var(--wm-text-main);
   font-size: 16px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
 
 .login-brand small {
-  color: #8a91a3;
+  color: #7482a3;
   font-size: 11px;
   letter-spacing: 0.12em;
 }
@@ -325,18 +326,19 @@ async function enterPortal() {
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.14);
   border-radius: 999px;
-  color: #a8afbf;
-  background: rgba(255, 255, 255, 0.025);
+  color: var(--wm-text-secondary);
+  background: rgba(255, 255, 255, 0.68);
   font-size: 12px;
+  box-shadow: 0 5px 16px rgba(49, 46, 129, 0.04);
   transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
 .status-link:hover {
-  color: #ededf2;
-  border-color: rgba(129, 140, 248, 0.35);
-  background: rgba(99, 102, 241, 0.07);
+  color: var(--wm-primary);
+  border-color: rgba(79, 70, 229, 0.3);
+  background: #eef2ff;
 }
 
 .status-link__arrow {
@@ -364,7 +366,7 @@ async function enterPortal() {
   align-items: center;
   gap: 9px;
   margin: 0 0 22px;
-  color: #9ca3af;
+  color: var(--wm-text-secondary);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.2em;
@@ -373,22 +375,22 @@ async function enterPortal() {
 .intro-kicker span {
   width: 24px;
   height: 1px;
-  background: linear-gradient(90deg, #818cf8, #2dd4bf);
-  box-shadow: 0 0 12px rgba(129, 140, 248, 0.5);
+  background: linear-gradient(90deg, #4f46e5, #0d9488);
+  box-shadow: 0 0 10px rgba(79, 70, 229, 0.25);
 }
 
 .login-intro h1 {
   margin: 0;
-  color: #f1f1f5;
+  color: #17203b;
   font-size: clamp(32px, 3.35vw, 48px);
-  font-weight: 620;
+  font-weight: 650;
   line-height: 1.42;
   letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 .login-intro h1 span {
-  color: #c7c9ff;
-  background: linear-gradient(105deg, #e2e3ff 10%, #a5b4fc 55%, #99f6e4 110%);
+  background: linear-gradient(105deg, #2447b8 4%, #4f46e5 52%, #0f8f86 108%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -397,7 +399,7 @@ async function enterPortal() {
 .intro-lead {
   max-width: 590px;
   margin: 24px 0 0;
-  color: #969eac;
+  color: var(--wm-text-secondary);
   font-size: 14px;
   line-height: 1.95;
 }
@@ -411,14 +413,14 @@ async function enterPortal() {
 
 .feature-item {
   padding: 16px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent);
+  border-top: 1px solid var(--wm-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.12));
 }
 
 .feature-item__number {
   display: block;
   margin-bottom: 14px;
-  color: #818cf8;
+  color: var(--wm-primary);
   font-family: Consolas, monospace;
   font-size: 11px;
   letter-spacing: 0.08em;
@@ -426,14 +428,14 @@ async function enterPortal() {
 
 .feature-item h2 {
   margin: 0 0 7px;
-  color: #dcdfe8;
+  color: var(--wm-text-main);
   font-size: 14px;
   font-weight: 600;
 }
 
 .feature-item p {
   margin: 0;
-  color: #838c9c;
+  color: var(--wm-text-secondary);
   font-size: 11px;
   line-height: 1.8;
 }
@@ -443,23 +445,23 @@ async function enterPortal() {
   align-items: center;
   gap: 12px;
   margin-top: 32px;
-  color: #8e97a8;
+  color: var(--wm-text-secondary);
   font-size: 11px;
 }
 
 .growth-path i {
   width: 20px;
   height: 1px;
-  background: rgba(129, 140, 248, 0.3);
+  background: rgba(79, 70, 229, 0.28);
 }
 
 .login-panel {
   position: relative;
   padding: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.095);
+  border: 1px solid rgba(255, 255, 255, 0.82);
   border-radius: 20px;
-  background: linear-gradient(145deg, rgba(18, 22, 34, 0.88), rgba(11, 14, 23, 0.78));
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.36), 0 0 0 1px rgba(99, 102, 241, 0.025) inset;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 30px 80px rgba(49, 46, 129, 0.13), 0 0 0 1px rgba(79, 70, 229, 0.025) inset;
   backdrop-filter: blur(22px);
   overflow: hidden;
 }
@@ -470,7 +472,7 @@ async function enterPortal() {
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(120deg, rgba(255, 255, 255, 0.035), transparent 28%);
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.5), transparent 32%);
 }
 
 .login-panel__shimmer {
@@ -480,7 +482,7 @@ async function enterPortal() {
   left: -35%;
   width: 35%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(165, 180, 252, 0.8), rgba(153, 246, 228, 0.55), transparent);
+  background: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.55), rgba(13, 148, 136, 0.28), transparent);
   animation: shimmer 7s ease-in-out infinite;
 }
 
@@ -496,7 +498,7 @@ async function enterPortal() {
 .panel-eyebrow {
   display: block;
   margin-bottom: 9px;
-  color: #818cf8;
+  color: var(--wm-primary);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.19em;
@@ -504,15 +506,15 @@ async function enterPortal() {
 
 .login-panel__head h2 {
   margin: 0;
-  color: #f0f0f4;
+  color: var(--wm-text-main);
   font-size: 24px;
-  font-weight: 620;
+  font-weight: 650;
   letter-spacing: -0.025em;
 }
 
 .login-panel__head p {
   margin: 9px 0 0;
-  color: #8d96a7;
+  color: var(--wm-text-secondary);
   font-size: 12px;
 }
 
@@ -522,15 +524,15 @@ async function enterPortal() {
   gap: 10px;
   margin: 22px 0 18px;
   padding: 11px 12px;
-  border: 1px solid rgba(129, 140, 248, 0.12);
+  border: 1px solid rgba(79, 70, 229, 0.14);
   border-radius: 10px;
-  background: rgba(99, 102, 241, 0.055);
-  color: #9ca7c6;
+  background: rgba(79, 70, 229, 0.055);
+  color: var(--wm-text-secondary);
 }
 
 .demo-note > .el-icon {
   margin-top: 2px;
-  color: #a5b4fc;
+  color: var(--wm-primary);
 }
 
 .demo-note div {
@@ -540,12 +542,13 @@ async function enterPortal() {
 }
 
 .demo-note strong {
-  color: #c7cce0;
+  color: #3730a3;
   font-size: 11px;
   font-weight: 600;
 }
 
 .demo-note span {
+  color: var(--wm-text-secondary);
   font-size: 10px;
   line-height: 1.65;
 }
@@ -565,25 +568,25 @@ async function enterPortal() {
   min-width: 0;
   padding: 12px;
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.075);
+  border: 1px solid var(--wm-border);
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.022);
-  color: #a7afbf;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--wm-text-secondary);
   cursor: pointer;
   transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
 }
 
 .role-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(129, 140, 248, 0.3);
-  background: rgba(99, 102, 241, 0.055);
+  border-color: rgba(79, 70, 229, 0.32);
+  background: #f7f8ff;
 }
 
 .role-card.is-selected {
-  border-color: rgba(129, 140, 248, 0.58);
-  background: linear-gradient(145deg, rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.055));
-  color: #e1e4f5;
-  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.1);
+  border-color: rgba(79, 70, 229, 0.56);
+  background: linear-gradient(145deg, #eef2ff, #f8f9ff);
+  color: var(--wm-text-main);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.1);
 }
 
 .role-card__icon {
@@ -592,13 +595,14 @@ async function enterPortal() {
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
+  background: #f0f3fa;
+  color: #6b7a99;
   font-size: 15px;
 }
 
 .role-card.is-selected .role-card__icon {
-  color: #b6bcff;
-  background: rgba(129, 140, 248, 0.14);
+  color: var(--wm-primary);
+  background: #e4e9ff;
 }
 
 .role-card__text {
@@ -615,7 +619,7 @@ async function enterPortal() {
 
 .role-card__text small {
   max-width: 100%;
-  color: #788398;
+  color: #8894aa;
   font-size: 9px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -632,8 +636,8 @@ async function enterPortal() {
 }
 
 .role-card.is-selected .role-card__indicator {
-  background: #a5b4fc;
-  box-shadow: 0 0 9px rgba(165, 180, 252, 0.75);
+  background: var(--wm-primary);
+  box-shadow: 0 0 9px rgba(79, 70, 229, 0.55);
 }
 
 .login-form {
@@ -641,51 +645,50 @@ async function enterPortal() {
 }
 
 .login-form :deep(.el-form-item__label) {
-  color: #aab2c2;
+  color: var(--wm-text-secondary);
   font-size: 11px;
   font-weight: 500;
 }
 
 .login-form :deep(.el-input__wrapper) {
-  border: 1px solid rgba(255, 255, 255, 0.085);
+  border: 1px solid var(--wm-border);
   border-radius: 10px;
-  background: rgba(3, 6, 12, 0.36);
+  background: rgba(248, 250, 255, 0.94);
   box-shadow: none;
   transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 .login-form :deep(.el-input__wrapper:hover) {
-  border-color: rgba(129, 140, 248, 0.32);
+  border-color: rgba(79, 70, 229, 0.32);
 }
 
 .login-form :deep(.el-input__wrapper.is-focus) {
-  border-color: rgba(129, 140, 248, 0.72);
-  background: rgba(3, 6, 12, 0.52);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: rgba(79, 70, 229, 0.65);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 }
 
-.login-form :deep(.el-input__inner),
-.login-form :deep(.el-input__inner::placeholder) {
-  color: #e4e7ef;
+.login-form :deep(.el-input__inner) {
+  color: var(--wm-text-main);
   font-size: 12px;
 }
 
 .login-form :deep(.el-input__inner::placeholder) {
-  color: #626d80;
+  color: #9aa5b8;
 }
 
 .login-form :deep(.el-input__prefix),
 .login-form :deep(.el-input__suffix) {
-  color: #737f96;
+  color: #8d99ae;
 }
 
 .login-error {
   margin: -2px 0 14px;
   padding: 10px 12px;
-  border: 1px solid rgba(248, 113, 113, 0.2);
+  border: 1px solid rgba(220, 38, 38, 0.16);
   border-radius: 9px;
-  background: rgba(248, 113, 113, 0.07);
-  color: #fca5a5;
+  background: #fef2f2;
+  color: #b91c1c;
   font-size: 11px;
   line-height: 1.65;
 }
@@ -696,10 +699,11 @@ async function enterPortal() {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid rgba(165, 180, 252, 0.3);
+  border: 1px solid rgba(79, 70, 229, 0.25);
   border-radius: 10px;
-  background: linear-gradient(105deg, #5457c9, #6366f1 58%, #4f46e5);
-  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.23), 0 0 18px rgba(99, 102, 241, 0.1);
+  background: linear-gradient(105deg, #4f46e5, #6366f1 58%, #4f46e5);
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(79, 70, 229, 0.22);
   font-size: 12px;
   font-weight: 600;
   transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
@@ -707,8 +711,8 @@ async function enterPortal() {
 
 .login-panel__submit:hover {
   transform: translateY(-1px);
-  filter: brightness(1.08);
-  box-shadow: 0 14px 32px rgba(79, 70, 229, 0.3), 0 0 22px rgba(99, 102, 241, 0.16);
+  filter: brightness(1.06);
+  box-shadow: 0 14px 32px rgba(79, 70, 229, 0.28);
 }
 
 .login-panel__submit:active {
@@ -721,19 +725,19 @@ async function enterPortal() {
   justify-content: center;
   gap: 13px;
   margin-top: 19px;
-  color: #7f899c;
+  color: var(--wm-text-secondary);
   font-size: 11px;
 }
 
 .login-panel__footer a:hover {
-  color: #c4c9ff;
+  color: var(--wm-primary);
 }
 
 .login-panel__footer > span {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: #485165;
+  background: #c3cad8;
 }
 
 .login-footer {
@@ -743,7 +747,7 @@ async function enterPortal() {
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  color: #626d7f;
+  color: #71809b;
   font-size: 10px;
 }
 
@@ -758,7 +762,7 @@ async function enterPortal() {
 .role-card:focus-visible,
 .login-panel__footer a:focus-visible,
 .login-footer a:focus-visible {
-  outline: 2px solid #818cf8;
+  outline: 2px solid var(--wm-primary);
   outline-offset: 4px;
 }
 

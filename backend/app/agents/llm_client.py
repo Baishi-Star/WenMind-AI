@@ -104,10 +104,25 @@ class AgentLLMClient:
                     headers={"Authorization": f"Bearer {settings.llm_api_key}"},
                     json=request_body,
                 )
-                response.raise_for_status()
+                if response.status_code >= 400:
+                    raise AppError(
+                        self._describe_upstream_error(response),
+                        ErrorCode.UPSTREAM_UNAVAILABLE,
+                        503,
+                    )
                 payload = response.json()
-            content = payload["choices"][0]["message"]["content"]
-            result = AgentResult.model_validate(self._extract_json(content))
+            message = payload["choices"][0]["message"]
+            content = message.get("content") or ""
+            reasoning = message.get("reasoning_content") or ""
+            finish_reason = payload["choices"][0].get("finish_reason")
+            if not content.strip() and not reasoning.strip():
+                raise AppError(
+                    f"{agent_name} 返回空内容（finish_reason={finish_reason}），请稍后重试",
+                    ErrorCode.UPSTREAM_UNAVAILABLE,
+                    503,
+                )
+            extracted = self._extract_json(content, reasoning)
+            result = AgentResult.model_validate(extracted)
             if result.agent_name != agent_name:
                 raise ValueError(f"agent_name 应为 {agent_name}")
             if result.status != "completed":
@@ -118,20 +133,49 @@ class AgentLLMClient:
                 if result.diagnostic_score is None:
                     raise ValueError(f"{agent_name} 必须返回 1-5 的 diagnostic_score")
             return result, payload.get("usage")
+        except AppError:
+            raise
+        except httpx.TimeoutException as exc:
+            raise AppError("模型调用超时，请稍后重试", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
         except (httpx.HTTPError, KeyError, IndexError, TypeError) as exc:
             raise AppError("真实模型调用失败或返回结构不完整", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
             raise AppError(f"Agent 输出未通过结构化校验：{exc}", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
 
     @staticmethod
-    def _extract_json(content: str) -> dict:
-        text = content.strip()
-        if text.startswith("```"):
-            text = text.removeprefix("```json").removeprefix("```").strip()
-            if text.endswith("```"):
-                text = text[:-3].strip()
-        start = text.find("{")
-        end = text.rfind("}")
-        if start < 0 or end <= start:
-            raise json.JSONDecodeError("未找到 JSON 对象", text, 0)
-        return json.loads(text[start : end + 1])
+    def _describe_upstream_error(response: httpx.Response) -> str:
+        """把供应商 HTTP 错误翻译为可读信息，避免 402 余额不足被笼统当成结构错误。"""
+        detail = ""
+        try:
+            body = response.json()
+            detail = str(body.get("error", {}).get("message") or "").strip()
+        except Exception:
+            detail = response.text[:200].strip()
+        mapping = {
+            401: "模型鉴权失败，请检查 LLM_API_KEY",
+            402: "模型账户余额不足，请充值或更换可用密钥",
+            403: "模型服务拒绝访问，请检查账号权限",
+            404: "模型或接口地址不存在，请检查 LLM_BASE_URL / LLM_MODEL",
+            429: "模型调用频率超限，请稍后重试",
+        }
+        base = mapping.get(response.status_code, f"模型服务返回 HTTP {response.status_code}")
+        return f"{base}（上游提示：{detail}）" if detail else base
+
+    @staticmethod
+    def _extract_json(content: str, reasoning: str = "") -> dict:
+        for source in (content, reasoning):
+            text = (source or "").strip()
+            if not text:
+                continue
+            if text.startswith("```"):
+                text = text.removeprefix("```json").removeprefix("```").strip()
+                if text.endswith("```"):
+                    text = text[:-3].strip()
+            start = text.find("{")
+            end = text.rfind("}")
+            if start >= 0 and end > start:
+                try:
+                    return json.loads(text[start : end + 1])
+                except json.JSONDecodeError:
+                    continue
+        raise json.JSONDecodeError("未找到 JSON 对象", (content or reasoning or "").strip(), 0)

@@ -46,9 +46,10 @@ function buildOption() {
     tooltip: {
       trigger: 'axis',
       renderMode: 'richText',
-      backgroundColor: 'rgba(17, 24, 39, 0.92)',
-      borderWidth: 0,
-      textStyle: { color: '#e5e7eb', fontSize: 11 },
+      backgroundColor: 'rgba(255, 255, 255, 0.97)',
+      borderColor: '#e4e8f3',
+      borderWidth: 1,
+      textStyle: { color: '#18213d', fontSize: 11 },
       formatter: (params) => {
         const index = params[0]?.dataIndex ?? 0
         const point = props.points[index]

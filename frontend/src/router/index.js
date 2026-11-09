@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const studentRoutes = [
   { path: 'dashboard', name: 'student-dashboard', title: '学生首页', component: () => import('@/views/student/DashboardView.vue') },
+  { path: 'tasks', name: 'student-tasks', title: '写作任务', component: () => import('@/views/student/TaskListView.vue') },
   { path: 'essays', name: 'student-essays', title: '我的作文', component: () => import('@/views/student/EssayCenterView.vue') },
   { path: 'essays/new', name: 'student-essay-new', title: '作文提交', component: () => import('@/views/student/EssaySubmitView.vue') },
   { path: 'evaluations', name: 'student-evaluations', title: 'AI 评价结果', component: () => import('@/views/student/EvaluationDetailView.vue') },
