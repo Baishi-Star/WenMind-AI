@@ -1,5 +1,6 @@
 <template>
-  <div>
+  <StudentWorkspace v-if="role === 'student'" />
+  <div v-else>
     <PageHeader
       :title="`${roleInfo.name}工作台`"
       :subtitle="roleInfo.description"
@@ -112,7 +113,7 @@
           :closable="false"
           show-icon
           title="评价定位说明"
-          description="AI 评价属于教学诊断性参考，不等同于高考正式阅卷分数，最终结果以教师复核为准。"
+          description="AI 评价按全国卷 60 分制量规生成原始分，最终结果以教师复核为准。"
         />
       </aside>
     </div>
@@ -127,6 +128,7 @@ import { ArrowRight } from '@element-plus/icons-vue'
 import BackendStatusCard from '@/components/BackendStatusCard.vue'
 import DemoSessionTag from '@/components/DemoSessionTag.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import StudentWorkspace from '@/components/StudentWorkspace.vue'
 import { NAVIGATIONS, ROLES } from '@/config/portal'
 import { useAuthStore } from '@/stores/auth'
 
