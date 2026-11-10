@@ -1,15 +1,93 @@
 """作文业务：题目、草稿、提交、编辑、历史与归属校验。"""
+from pathlib import Path
+from uuid import uuid4
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.config import BASE_DIR, settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
+from app.core.logging import get_logger
 from app.models.base import EssayStatus, UserRole
 from app.models.essay import Essay, EssayPrompt
 from app.models.user import User
 from app.schemas.common import PageData
-from app.schemas.essay import EssayCreate, EssayDetail, EssayListItem, EssayPromptResponse, EssayUpdate
+from app.schemas.essay import (
+    EssayCreate,
+    EssayDetail,
+    EssayListItem,
+    EssayOcrResponse,
+    EssayPromptResponse,
+    EssayUpdate,
+)
+from app.services import ocr_service
 from app.services.access_service import accessible_student_ids, assert_student_access
+
+logger = get_logger(__name__)
+
+ALLOWED_IMAGE_MIME = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+
+
+def _image_dir() -> Path:
+    directory = Path(settings.essay_image_dir)
+    if not directory.is_absolute():
+        directory = BASE_DIR / directory
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory.resolve()
+
+
+def detect_image_mime(data: bytes) -> str | None:
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def save_essay_image(data: bytes) -> tuple[str, int]:
+    mime = detect_image_mime(data)
+    if mime is None:
+        raise AppError("仅支持 JPG、PNG、WebP 格式的图片")
+    target = _image_dir() / f"{uuid4().hex}{ALLOWED_IMAGE_MIME[mime]}"
+    target.write_bytes(data)
+    try:
+        token = target.relative_to(BASE_DIR.resolve()).as_posix()
+    except ValueError:
+        token = target.as_posix()
+    return token, len(data)
+
+
+def resolve_image_token(token: str | None) -> Path | None:
+    if not token:
+        return None
+    candidate = Path(token)
+    if not candidate.is_absolute():
+        candidate = BASE_DIR / candidate
+    candidate = candidate.resolve()
+    directory = _image_dir()
+    if directory not in candidate.parents and candidate != directory:
+        return None
+    if not candidate.is_file():
+        return None
+    return candidate
+
+
+def recognize_essay_image(token: str) -> EssayOcrResponse:
+    if not ocr_service.is_enabled():
+        return EssayOcrResponse(status="disabled", text="", message="当前未启用图片识别，请手动录入正文")
+    path = resolve_image_token(token)
+    if path is None:
+        return EssayOcrResponse(status="failed", text="", message="图片不存在或已失效，请重新上传")
+    with path.open("rb") as handle:
+        header = handle.read(16)
+    mime = detect_image_mime(header) or "image/png"
+    try:
+        text = ocr_service.recognize(path, mime)
+    except ocr_service.OcrFailure:
+        return EssayOcrResponse(status="failed", text="", message="识别失败，请重传图片或手动输入正文")
+    return EssayOcrResponse(status="parsed", text=text, message="")
 
 
 def _serialize_list_item(essay: Essay, student_name: str, prompt_title: str | None) -> EssayListItem:
@@ -23,6 +101,9 @@ def _serialize_list_item(essay: Essay, student_name: str, prompt_title: str | No
         char_count=essay.char_count,
         status=essay.status,
         is_demo=essay.is_demo,
+        source_type=essay.source_type or "text",
+        image_path=essay.image_path,
+        ocr_status=essay.ocr_status or "none",
         created_at=essay.created_at,
         updated_at=essay.updated_at,
     )
@@ -72,6 +153,17 @@ def _validate_content(content: str) -> None:
 def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
     _validate_content(payload.content)
     _validate_prompt(db, payload.prompt_id)
+    source_type = payload.source_type or "text"
+    image_path = payload.image_path
+    ocr_status = "none"
+    if source_type == "image":
+        resolved = resolve_image_token(image_path)
+        if resolved is None:
+            logger.warning("图片作文的图片文件丢失，已降级为文本提交 student_id=%s", user.id)
+            source_type = "text"
+            image_path = None
+        elif payload.ocr_text and payload.ocr_text.strip():
+            ocr_status = "parsed"
     essay = Essay(
         student_id=user.id,
         prompt_id=payload.prompt_id,
@@ -80,6 +172,10 @@ def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
         char_count=len(payload.content),
         status=EssayStatus.DRAFT if payload.submission_mode == "draft" else EssayStatus.SUBMITTED,
         is_demo=user.is_demo,
+        source_type=source_type,
+        image_path=image_path,
+        ocr_status=ocr_status,
+        ocr_text=payload.ocr_text,
     )
     db.add(essay)
     db.commit()

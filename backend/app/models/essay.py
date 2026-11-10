@@ -35,6 +35,10 @@ class Essay(TimestampMixin, Base):
     char_count: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=EssayStatus.SUBMITTED, index=True)
     is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    source_type: Mapped[str] = mapped_column(String(20), nullable=False, default="text")
+    image_path: Mapped[str | None] = mapped_column(String(500))
+    ocr_status: Mapped[str] = mapped_column(String(20), nullable=False, default="none")
+    ocr_text: Mapped[str | None] = mapped_column(Text)
 
     prompt: Mapped[EssayPrompt | None] = relationship(back_populates="essays")
     evaluations: Mapped[list["Evaluation"]] = relationship(back_populates="essay")

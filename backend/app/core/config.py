@@ -53,7 +53,7 @@ class Settings(BaseSettings):
 
     growth_min_samples: int = 3
     growth_recent_window: int = 3
-    growth_weak_threshold: float = 3.5
+    growth_weak_threshold: float = 14.0
 
     task_max_questions: int = 20
     task_max_due_days: int = 180
@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     submission_image_max_mb: int = 10
     submission_image_max_pages: int = 20
     submission_image_total_max_mb: int = 50
+
+    ocr_enabled: bool = False
+    ocr_base_url: str = ""
+    ocr_api_key: str = ""
+    ocr_model: str = ""
+    ocr_timeout_seconds: int = 60
+    essay_image_max_mb: int = 5
+    essay_image_dir: str = "data/uploads/essays"
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

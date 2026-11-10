@@ -9,6 +9,9 @@ class EssayCreate(BaseModel):
     prompt_id: int | None = None
     content: str
     submission_mode: Literal["draft", "submit"] = "submit"
+    source_type: Literal["text", "image"] = "text"
+    image_path: str | None = None
+    ocr_text: str | None = None
 
     @field_validator("content")
     @classmethod
@@ -17,6 +20,27 @@ class EssayCreate(BaseModel):
         if not stripped:
             raise ValueError("作文正文不能为空")
         return stripped
+
+
+class EssayImageUploadResponse(BaseModel):
+    image_token: str
+    preview_url: str
+    size_bytes: int
+    ocr_enabled: bool
+
+
+class EssayOcrRequest(BaseModel):
+    image_token: str
+
+
+class EssayOcrResponse(BaseModel):
+    status: str
+    text: str
+    message: str
+
+
+class EssayOcrStatusResponse(BaseModel):
+    enabled: bool
 
 
 class EssayUpdate(BaseModel):
@@ -53,6 +77,9 @@ class EssayListItem(BaseModel):
     char_count: int
     status: str
     is_demo: bool
+    source_type: str = "text"
+    image_path: str | None = None
+    ocr_status: str = "none"
     created_at: datetime
     updated_at: datetime
 

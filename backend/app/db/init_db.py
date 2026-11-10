@@ -6,10 +6,28 @@ from app.models import Base
 
 logger = get_logger(__name__)
 
+_ESSAY_COLUMN_MIGRATIONS = {
+    "source_type": "ALTER TABLE essays ADD COLUMN source_type VARCHAR(20) NOT NULL DEFAULT 'text'",
+    "image_path": "ALTER TABLE essays ADD COLUMN image_path VARCHAR(500)",
+    "ocr_status": "ALTER TABLE essays ADD COLUMN ocr_status VARCHAR(20) NOT NULL DEFAULT 'none'",
+    "ocr_text": "ALTER TABLE essays ADD COLUMN ocr_text TEXT",
+}
+
+
+def _ensure_essay_columns() -> None:
+    """幂等补齐 essays 新增列；create_all 不会给已存在的表加列。"""
+    with engine.begin() as connection:
+        existing = {row[1] for row in connection.exec_driver_sql("PRAGMA table_info(essays)")}
+        for column, ddl in _ESSAY_COLUMN_MIGRATIONS.items():
+            if column not in existing:
+                connection.exec_driver_sql(ddl)
+                logger.info("essays 表已补列：%s", column)
+
 
 def init_database() -> None:
     (BASE_DIR / "data").mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    _ensure_essay_columns()
     logger.info("数据库表结构初始化完成，共 %s 张表", len(Base.metadata.tables))
 
 
