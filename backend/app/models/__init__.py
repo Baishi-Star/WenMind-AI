@@ -1,5 +1,6 @@
 """统一导出所有模型，确保建表前完整注册到 Base.metadata。"""
 from app.models.agent_evaluation import EvaluationReport, RetrievalLog
+from app.models.annotation import AnnotationShape, AnnotationSource, EssayAnnotation
 from app.models.appeal import Appeal, ReviewRecord
 from app.models.base import Base, Dimension, EssayStatus, EvaluationStatus, TimestampMixin, UserRole, utc_now
 from app.models.essay import Essay, EssayPrompt
@@ -16,6 +17,8 @@ from app.models.writing_task import TaskQuestion, TaskSource, TaskStatus, TaskTa
 
 __all__ = [
     "AgentRun",
+    "AnnotationShape",
+    "AnnotationSource",
     "Appeal",
     "AppealItem",
     "Base",
@@ -24,6 +27,7 @@ __all__ = [
     "DimensionScore",
     "Enrollment",
     "Essay",
+    "EssayAnnotation",
     "EssayPrompt",
     "EssayStatus",
     "Evaluation",

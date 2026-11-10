@@ -9,6 +9,7 @@ from app.models.base import UserRole
 from app.models.user import User
 from app.schemas.common import ApiResponse, success
 from app.schemas.writing_task import (
+    ImageSubmissionCreate,
     StudentTaskResponse,
     SubmissionCreate,
     SubmissionResponse,
@@ -87,6 +88,34 @@ def create_submission(
         if item.evaluation_id is not None:
             background_tasks.add_task(run_evaluation_task, item.evaluation_id)
     return success(submission, message="作文已提交，AI 评价任务已进入后台队列")
+
+
+@router.post(
+    "/submissions/image",
+    response_model=ApiResponse[SubmissionResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def create_image_submission(
+    payload: ImageSubmissionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(student_only),
+) -> ApiResponse[SubmissionResponse]:
+    submission = submission_service.create_image_submission(db, current_user, payload.task_id)
+    return success(submission, message="已创建图片提交流程，请上传作文照片；确认后再进入评价队列")
+
+
+@router.post("/submissions/{submission_id}/submit", response_model=ApiResponse[SubmissionResponse])
+def submit_image_submission(
+    submission_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(student_only),
+) -> ApiResponse[SubmissionResponse]:
+    submission = submission_service.submit_image_submission(db, current_user, submission_id)
+    for item in submission.answers:
+        if item.evaluation_id is not None:
+            background_tasks.add_task(run_evaluation_task, item.evaluation_id)
+    return success(submission, message="图片作文已提交，AI 评价任务已进入后台队列")
 
 
 @router.get("/submissions", response_model=ApiResponse[list[SubmissionResponse]])

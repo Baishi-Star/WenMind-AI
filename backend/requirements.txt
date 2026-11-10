@@ -17,5 +17,8 @@ scikit-learn==1.9.1
 joblib==1.6.0
 python-multipart==0.0.33
 
+# 图片处理：读取作文照片宽高（Windows 下需 --proxy "" 才能装成功）
+Pillow==13.0.0
+
 # 测试
 pytest==8.3.5

@@ -2,11 +2,13 @@
 from fastapi import APIRouter
 
 from app.api import (
+    annotations,
     appeals,
     auth,
     classes,
     essays,
     evaluations,
+    files,
     growth,
     health,
     knowledge,
@@ -31,3 +33,5 @@ api_router.include_router(teacher_rules.router)
 api_router.include_router(growth.router)
 api_router.include_router(tasks.router)
 api_router.include_router(submissions.router)
+api_router.include_router(files.router)
+api_router.include_router(annotations.router)

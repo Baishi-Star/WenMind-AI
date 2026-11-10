@@ -148,20 +148,62 @@
     <el-drawer
       v-model="detailVisible"
       title="作文原文"
-      size="620px"
+      size="900px"
     >
       <div v-loading="detailLoading">
         <template v-if="essayDetail">
           <h3>{{ essayDetail.prompt_title || '自由作文' }}</h3>
           <div class="detail-meta">
             作文 #{{ essayDetail.id }} · 内容版本 v{{ essayDetail.content_version }} · {{ essayDetail.char_count }} 字
+            <el-tag
+              size="small"
+              :type="essayFiles.length ? 'warning' : 'info'"
+              effect="plain"
+              class="source-tag"
+            >
+              {{ essayFiles.length ? '图片提交' : '文字提交' }}
+            </el-tag>
           </div>
           <el-tag :type="statusType(essayDetail.status)">
             {{ statusLabel(essayDetail.status) }}
           </el-tag>
-          <div class="essay-detail-content">
-            {{ essayDetail.content }}
-          </div>
+
+          <el-tabs
+            v-if="essayFiles.length"
+            v-model="detailTab"
+            class="detail-tabs"
+          >
+            <el-tab-pane
+              label="原始图片"
+              name="image"
+            >
+              <el-alert
+                type="info"
+                :closable="false"
+                show-icon
+                title="以下为学生提交的原始作文图片"
+                description="可缩放、旋转、翻页；识别文本仅供参照，疑处请以原图为准。"
+                class="detail-notice"
+              />
+              <EssayImageViewer
+                :files="essayFiles"
+                :annotations="essayAnnotations"
+              />
+            </el-tab-pane>
+            <el-tab-pane
+              label="识别/确认文本"
+              name="text"
+            >
+              <div class="essay-detail-content">
+                {{ essayDetail.content || '（该作文暂无已确认文本）' }}
+              </div>
+            </el-tab-pane>
+          </el-tabs>
+          <template v-else>
+            <div class="essay-detail-content">
+              {{ essayDetail.content }}
+            </div>
+          </template>
         </template>
       </div>
     </el-drawer>
@@ -173,7 +215,9 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import PageHeader from '@/components/PageHeader.vue'
+import EssayImageViewer from '@/components/EssayImageViewer.vue'
 import { fetchEssay, fetchEssays } from '@/api/essay'
+import { fetchEssayAnnotations, fetchEssayFiles } from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const router = useRouter()
@@ -184,6 +228,9 @@ const loading = ref(false)
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const essayDetail = ref(null)
+const essayFiles = ref([])
+const essayAnnotations = ref([])
+const detailTab = ref('image')
 
 function statusType(status) { return { completed: 'success', failed: 'danger', evaluating: 'warning', submitted: 'primary', draft: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '评价完成', failed: '评价失败', evaluating: '评价中', submitted: '已提交', draft: '草稿' }[status] || status }
@@ -202,9 +249,19 @@ async function loadEssays() {
 async function openDetail(essayId) {
   detailVisible.value = true
   detailLoading.value = true
+  essayFiles.value = []
+  essayAnnotations.value = []
+  detailTab.value = 'image'
   try {
-    const response = await fetchEssay(essayId)
-    essayDetail.value = response.data
+    const [detailResponse, filesResponse, annotationResponse] = await Promise.all([
+      fetchEssay(essayId),
+      fetchEssayFiles(essayId).catch(() => ({ data: [] })),
+      fetchEssayAnnotations(essayId).catch(() => ({ data: [] })),
+    ])
+    essayDetail.value = detailResponse.data
+    essayFiles.value = filesResponse.data || []
+    essayAnnotations.value = annotationResponse.data || []
+    if (!essayFiles.value.length) detailTab.value = 'text'
   } finally {
     detailLoading.value = false
   }
@@ -223,5 +280,8 @@ onMounted(loadEssays)
 .demo-tag { margin-left: 8px; }
 .list-footer { margin-top: 14px; color: var(--wm-text-secondary); font-size: 12px; text-align: right; }
 .detail-meta { margin: 8px 0 12px; color: var(--wm-text-secondary); font-size: 12px; }
+.detail-meta .source-tag { margin-left: 8px; }
+.detail-tabs { margin-top: 14px; }
+.detail-notice { margin-bottom: 12px; }
 .essay-detail-content { margin-top: 18px; padding: 18px; border-radius: 12px; background: #fffdf8; line-height: 2; white-space: pre-wrap; }
 </style>

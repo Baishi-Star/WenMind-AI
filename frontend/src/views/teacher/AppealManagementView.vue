@@ -295,6 +295,58 @@
             </el-tab-pane>
 
             <el-tab-pane
+              label="图片原文与批注"
+              name="image"
+            >
+              <el-alert
+                type="info"
+                :closable="false"
+                show-icon
+                title="在原始作文图片上查看与新增批注"
+                description="AI 证据标注与教师批注分轨保存，教师批注不会覆盖 AI 或学生原文。"
+                class="review-alert"
+              />
+              <template v-if="appealEssayFiles.length">
+                <div class="annotation-tools">
+                  <el-radio-group
+                    v-model="annotationShape"
+                    size="small"
+                  >
+                    <el-radio-button value="rect">
+                      矩形批注
+                    </el-radio-button>
+                    <el-radio-button value="point">
+                      点批注
+                    </el-radio-button>
+                  </el-radio-group>
+                  <span class="annotation-tools__hint">在图片上点击可创建批注；矩形默认覆盖点击区域附近的固定比例。</span>
+                </div>
+                <div
+                  class="annotation-stage"
+                  @click="handleCreateAnnotation"
+                >
+                  <EssayImageViewer
+                    :files="appealEssayFiles"
+                    :annotations="appealAnnotations"
+                  />
+                </div>
+                <el-input
+                  v-model="annotationNote"
+                  type="textarea"
+                  :rows="2"
+                  maxlength="500"
+                  placeholder="批注内容（可选）：例如指出该段的问题或优点"
+                  class="annotation-note"
+                />
+              </template>
+              <el-empty
+                v-else
+                description="该申诉关联的评价不是图片作文，无图片可批注"
+                :image-size="70"
+              />
+            </el-tab-pane>
+
+            <el-tab-pane
               label="教师复核"
               name="review"
             >
@@ -541,12 +593,14 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import PageHeader from '@/components/PageHeader.vue'
+import EssayImageViewer from '@/components/EssayImageViewer.vue'
 import {
   fetchTeacherAppeal,
   fetchTeacherAppeals,
   fetchTeacherClasses,
   submitTeacherReview,
 } from '@/api/teacher'
+import { createEssayAnnotation, fetchEssayAnnotations, fetchEssayFiles } from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const appeals = ref([])
@@ -559,6 +613,10 @@ const activeTab = ref('appeal')
 const submitting = ref(false)
 const reviewError = ref('')
 const filters = reactive({ class_id: null, status: '', reason_type: '' })
+const appealEssayFiles = ref([])
+const appealAnnotations = ref([])
+const annotationShape = ref('rect')
+const annotationNote = ref('')
 
 const statusOptions = [
   { value: 'pending', label: '待复核' },
@@ -632,12 +690,58 @@ async function openDetail(appealId) {
   detailLoadingId.value = appealId
   activeTab.value = 'appeal'
   reviewError.value = ''
+  appealEssayFiles.value = []
+  appealAnnotations.value = []
+  annotationNote.value = ''
   try {
     const response = await fetchTeacherAppeal(appealId)
     detail.value = response.data
     initializeReviewForm()
+    await loadAppealImages()
   } finally {
     detailLoadingId.value = null
+  }
+}
+
+async function loadAppealImages() {
+  const essayId = detail.value?.essay_id
+  if (!essayId) return
+  const [filesResponse, annotationResponse] = await Promise.all([
+    fetchEssayFiles(essayId).catch(() => ({ data: [] })),
+    fetchEssayAnnotations(essayId).catch(() => ({ data: [] })),
+  ])
+  appealEssayFiles.value = filesResponse.data || []
+  appealAnnotations.value = annotationResponse.data || []
+}
+
+async function handleCreateAnnotation(event) {
+  if (!appealEssayFiles.value.length) return
+  const target = event.target.closest('.viewer-image-wrap')
+  if (!target) return
+  const rect = target.getBoundingClientRect()
+  if (rect.width === 0 || rect.height === 0) return
+  // 转换为归一化坐标（0~1），与后端存储口径一致
+  const x = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
+  const y = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
+  const payload = {
+    submission_file_id: appealEssayFiles.value[0].id,
+    label: 'teacher_note',
+    shape: annotationShape.value,
+    x,
+    y,
+    width: annotationShape.value === 'rect' ? Math.min(0.35, 1 - x) : 0,
+    height: annotationShape.value === 'rect' ? 0.05 : 0,
+    page_no: 1,
+    note: annotationNote.value.trim() || '教师批注',
+    color: '#f59e0b',
+  }
+  try {
+    await createEssayAnnotation(detail.value.essay_id, payload)
+    ElMessage.success('批注已保存')
+    annotationNote.value = ''
+    await loadAppealImages()
+  } catch (requestError) {
+    ElMessage.error(requestError.message || '批注保存失败')
   }
 }
 
@@ -742,6 +846,10 @@ onMounted(async () => {
 .dimension-strip strong { font-size: 22px; color: var(--wm-primary); }
 .dimension-strip small { display: block; color: var(--wm-text-secondary); font-size: 10px; }
 .review-alert { margin-bottom: 14px; }
+.annotation-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.annotation-tools__hint { color: var(--wm-text-secondary); font-size: 11px; }
+.annotation-stage { margin-bottom: 12px; }
+.annotation-note { margin-bottom: 14px; }
 .ai-feedback { padding: 14px; margin-bottom: 10px; border: 1px solid var(--wm-border); border-radius: 10px; }
 .ai-feedback__head { display: flex; align-items: center; gap: 8px; color: var(--wm-text-secondary); font-size: 11px; }
 .ai-feedback p { margin: 8px 0 0; font-size: 13px; line-height: 1.8; }

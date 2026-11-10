@@ -126,6 +126,92 @@ def _upsert_answer_essay(
     return answer, essay
 
 
+def create_image_submission(db: Session, student: User, task_id: int) -> SubmissionResponse:
+    """图片提交流程：先创建 draft 提交用于上传图片，此时不触发评价。
+
+    图片需上传、识别、学生确认后才调用 submit_image_submission 进入评价队列。
+    """
+    if student.role != UserRole.STUDENT:
+        raise PermissionDeniedError("只有学生可以提交作文")
+    context = writing_task_service.get_student_task(db, student, task_id)
+    task: WritingTask = context["task"]
+    writing_task_service.assert_can_submit(db, student, task)
+    if not task.questions:
+        raise AppError("该任务未配置子问题，无法提交")
+
+    attempt_no = (
+        db.scalar(
+            select(func.max(Submission.attempt_no)).where(
+                Submission.task_id == task.id, Submission.student_id == student.id
+            )
+        )
+        or 0
+    ) + 1
+    submission = Submission(
+        task_id=task.id,
+        student_id=student.id,
+        attempt_no=attempt_no,
+        input_mode="image",
+        status=SubmissionStatus.DRAFT,
+        is_demo=student.is_demo,
+    )
+    db.add(submission)
+    db.commit()
+    db.refresh(submission)
+    return _serialize_submission(db, submission)
+
+
+def submit_image_submission(db: Session, student: User, submission_id: int) -> SubmissionResponse:
+    """学生确认识别文本后提交图片作文，进入多 Agent 评价队列。
+
+    仅当提交处于 ready（识别文本已确认）时允许；逐题作答复用 essays/evaluations 链路。
+    """
+    if student.role != UserRole.STUDENT:
+        raise PermissionDeniedError("只有学生可以提交作文")
+    submission = db.get(Submission, submission_id)
+    if submission is None or submission.student_id != student.id:
+        raise NotFoundError("提交记录不存在")
+    if submission.status != SubmissionStatus.READY:
+        raise ConflictError("请先完成图片识别并确认文本后再提交")
+    task = db.get(WritingTask, submission.task_id)
+    writing_task_service.assert_can_submit(db, student, task)
+    if not task.questions:
+        raise AppError("该任务未配置子问题，无法提交")
+
+    answer = db.scalar(select(SubmissionAnswer).where(SubmissionAnswer.submission_id == submission.id))
+    if answer is None or not answer.confirmed_text.strip():
+        raise ConflictError("尚未确认作答文本，无法提交")
+
+    for question in task.questions:
+        length = len(answer.confirmed_text)
+        if task.word_min and length < task.word_min:
+            raise AppError(f"{question.label} 字数不足：当前 {length} 字，要求不少于 {task.word_min} 字")
+        if task.word_max and length > task.word_max:
+            raise AppError(f"{question.label} 字数超限：当前 {length} 字，要求不超过 {task.word_max} 字")
+        if length > settings.essay_max_chars:
+            raise AppError(f"{question.label} 超过系统上限 {settings.essay_max_chars} 字")
+
+    created: list[int] = []
+    for question in task.questions:
+        _answer, essay = _upsert_answer_essay(
+            db, submission, task, question.id, answer.confirmed_text, student.is_demo
+        )
+        try:
+            evaluation = create_evaluation(db, student, essay.id)
+            created.append(evaluation.id)
+        except ConflictError:
+            existing = db.scalar(
+                select(Evaluation).where(Evaluation.essay_id == essay.id).order_by(Evaluation.id.desc()).limit(1)
+            )
+            if existing is not None:
+                created.append(existing.id)
+    submission.status = SubmissionStatus.EVALUATING
+    submission.submitted_at = utc_now()
+    db.commit()
+    db.refresh(submission)
+    return _serialize_submission(db, submission)
+
+
 def create_text_submission(db: Session, student: User, task_id: int, answers: list[AnswerInput]) -> SubmissionResponse:
     """文字/在线输入提交：逐题校验 → 落库 → 触发多 Agent 评价。"""
     if student.role != UserRole.STUDENT:

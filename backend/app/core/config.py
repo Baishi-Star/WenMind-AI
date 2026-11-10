@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
     llm_json_mode: bool = False
     llm_max_tokens: int = 8192
+    llm_vision_max_tokens: int = 16384
+    llm_vision_timeout_seconds: int = 180
 
     embedding_mode: str = "auto"
     embedding_base_url: str = ""
@@ -55,6 +57,10 @@ class Settings(BaseSettings):
 
     task_max_questions: int = 20
     task_max_due_days: int = 180
+
+    submission_image_max_mb: int = 10
+    submission_image_max_pages: int = 20
+    submission_image_total_max_mb: int = 50
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

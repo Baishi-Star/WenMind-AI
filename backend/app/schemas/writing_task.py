@@ -135,6 +135,10 @@ class SubmissionCreate(BaseModel):
     answers: list[AnswerInput] = Field(min_length=1)
 
 
+class ImageSubmissionCreate(BaseModel):
+    task_id: int = Field(gt=0)
+
+
 class SubmissionAnswerResponse(BaseModel):
     id: int
     question_id: int
@@ -163,3 +167,33 @@ class SubmissionResponse(BaseModel):
     updated_at: datetime
     answers: list[SubmissionAnswerResponse] = Field(default_factory=list)
     file_count: int = 0
+
+class SubmissionFileResponse(BaseModel):
+    id: int
+    submission_id: int
+    file_kind: str
+    original_filename: str
+    mime_type: str
+    file_size: int
+    page_no: int | None
+    sort_order: int
+    rotation: int
+    width: int | None
+    height: int | None
+    extraction_status: str
+    extracted_text: str | None
+    error_message: str | None
+    created_at: datetime
+
+
+class FileReorderItem(BaseModel):
+    file_id: int = Field(gt=0)
+    rotation: int = Field(default=0, ge=0, le=359)
+
+class ExtractionConfirmPage(BaseModel):
+    file_id: int = Field(gt=0)
+    confirmed_text: str = Field(min_length=1, max_length=20000)
+
+
+class ExtractionConfirmRequest(BaseModel):
+    pages: list[ExtractionConfirmPage] = Field(min_length=1)

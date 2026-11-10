@@ -82,15 +82,59 @@
             我的提交：{{ submissionLabel(task.submission_status) }}
           </el-tag>
         </div>
-        <el-button
-          type="primary"
-          :disabled="task.is_overdue || (task.submission_status && !task.allow_resubmit)"
-          @click="openSubmit(task)"
-        >
-          {{ task.submission_status && !task.allow_resubmit ? '已提交' : task.submission_status ? '再次提交' : '开始作答' }}
-        </el-button>
+        <div class="task-card__actions">
+          <el-button
+            type="primary"
+            :disabled="task.is_overdue || (task.submission_status && !task.allow_resubmit)"
+            @click="openSubmit(task)"
+          >
+            {{ task.submission_status && !task.allow_resubmit ? '已提交' : task.submission_status ? '再次提交文字' : '在线作答' }}
+          </el-button>
+          <el-button
+            :disabled="task.is_overdue"
+            @click="openImageSubmit(task)"
+          >
+            上传作文照片
+          </el-button>
+        </div>
       </article>
     </div>
+
+    <el-dialog
+      v-model="imageVisible"
+      :title="activeTask ? `上传作文照片：${activeTask.title}` : '上传作文照片'"
+      width="860px"
+      :close-on-click-modal="false"
+    >
+      <template v-if="activeTask">
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          title="作文题目 / 材料"
+          :description="activeTask.prompt_text"
+          class="submit-notice"
+        />
+        <el-alert
+          type="warning"
+          :closable="false"
+          show-icon
+          title="当前阶段说明"
+          description="本步仅完成图片上传、页序与查看。视觉模型识别与批改将在下一步接入；确认前不会进入评价队列。"
+          class="submit-notice"
+        />
+        <ImageUploader
+          v-if="imageSubmissionId"
+          :submission-id="imageSubmissionId"
+          @changed="handleImageChanged"
+        />
+      </template>
+      <template #footer>
+        <el-button @click="imageVisible = false">
+          关闭
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog
       v-model="submitVisible"
@@ -172,7 +216,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 
 import PageHeader from '@/components/PageHeader.vue'
-import { createSubmission, fetchStudentTasks } from '@/api/submission'
+import ImageUploader from '@/components/ImageUploader.vue'
+import { createImageSubmission, createSubmission, fetchStudentTasks } from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const tasks = ref([])
@@ -182,6 +227,9 @@ const submitting = ref(false)
 const submitError = ref('')
 const activeTask = ref(null)
 const answerMap = reactive({})
+const imageVisible = ref(false)
+const imageSubmissionId = ref(null)
+const imageCreating = ref(false)
 
 function statusType(status) { return { published: 'success', closed: 'warning' }[status] || 'info' }
 function statusLabel(status) { return { published: '进行中', closed: '已关闭' }[status] || status }
@@ -245,6 +293,26 @@ async function submitAnswers() {
   }
 }
 
+function handleImageChanged(count) {
+  if (count > 0) ElMessage.success(`当前已上传 ${count} 张作文照片`)
+}
+
+async function openImageSubmit(task) {
+  activeTask.value = task
+  imageSubmissionId.value = null
+  imageVisible.value = true
+  imageCreating.value = true
+  try {
+    const response = await createImageSubmission(task.id)
+    imageSubmissionId.value = response.data.id
+  } catch (requestError) {
+    ElMessage.error(requestError.message || '无法创建图片提交流程')
+    imageVisible.value = false
+  } finally {
+    imageCreating.value = false
+  }
+}
+
 onMounted(loadTasks)
 </script>
 
@@ -258,6 +326,7 @@ onMounted(loadTasks)
 .task-card__meta { color: var(--wm-text-secondary); font-size: 11px; }
 .task-card__prompt { margin: 0; max-height: 72px; overflow: auto; color: var(--wm-text-secondary); font-size: 12px; line-height: 1.8; }
 .task-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.task-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .submit-notice { margin-bottom: 12px; }
 .question-requirement { margin-left: 8px; color: var(--wm-text-secondary); font-size: 11px; font-weight: 400; }
 .answer-meta { margin-top: 5px; color: var(--wm-text-secondary); font-size: 11px; }

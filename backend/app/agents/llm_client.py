@@ -1,5 +1,7 @@
 """OpenAI-compatible LLM 适配层：真实调用与显式 Mock 严格区分。"""
+import base64
 import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -32,6 +34,73 @@ class AgentLLMClient:
     def __init__(self) -> None:
         self.execution_mode = settings.llm_mode
         self.model_name = MOCK_MODEL_NAME if self.execution_mode == "mock" else settings.llm_model
+
+    def transcribe_image(self, image_path: str | Path, mime_type: str, instruction: str | None = None) -> tuple[str, dict | None]:
+        """用视觉模型识别单张作文图片文字。
+
+        返回 (识别文本, usage)。Mock 模式不伪造识别结果，明确返回占位说明。
+        不使用 OCR，直接走 DeepSeek 兼容的 image_url 多模态消息。
+        """
+        if self.execution_mode == "mock":
+            return (
+                "[Mock 模式未调用视觉模型] 图片文字识别需真实模型；请以学生校对后的文本为准。",
+                None,
+            )
+        if not settings.llm_configured:
+            raise AppError("真实模型配置不完整，无法进行图片识别", ErrorCode.UPSTREAM_UNAVAILABLE, 503)
+        path = Path(image_path)
+        if not path.exists():
+            raise AppError("图片文件不存在，无法识别", ErrorCode.NOT_FOUND, 404)
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        prompt = instruction or (
+            "这是一张学生手写作文的答题卡照片。请只输出图片中的手写作文正文文字，"
+            "按自然段分行；忽略印刷的题目要求、分数、教师红笔批注和页眉页脚；"
+            "无法辨认的字用「□」代替，不要臆造内容，不要输出任何解释或标记。"
+        )
+        payload = {
+            "model": settings.llm_model,
+            "max_tokens": settings.llm_vision_max_tokens,
+            "temperature": 0,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded}"}},
+                    ],
+                }
+            ],
+        }
+        try:
+            with httpx.Client(timeout=settings.llm_vision_timeout_seconds) as client:
+                response = client.post(
+                    f"{settings.llm_base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
+                    json=payload,
+                )
+                if response.status_code >= 400:
+                    raise AppError(self._describe_upstream_error(response), ErrorCode.UPSTREAM_UNAVAILABLE, 503)
+                body = response.json()
+        except AppError:
+            raise
+        except httpx.TimeoutException as exc:
+            raise AppError("图片识别超时，请稍后重试", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
+        except (httpx.HTTPError, KeyError, IndexError, TypeError) as exc:
+            raise AppError(
+                f"图片识别调用失败：{exc}", ErrorCode.UPSTREAM_UNAVAILABLE, 503
+            ) from exc
+        choice = body.get("choices", [{}])[0]
+        message = choice.get("message", {})
+        content = (message.get("content") or "").strip()
+        if not content:
+            reasoning = (message.get("reasoning_content") or "").strip()
+            raise AppError(
+                f"图片识别未返回文本（finish_reason={choice.get('finish_reason')}，推理片段长度 {len(reasoning)}）；"
+                "可能是推理预算不足，请提高 LLM_VISION_MAX_TOKENS 后重试",
+                ErrorCode.UPSTREAM_UNAVAILABLE,
+                503,
+            )
+        return content, body.get("usage")
 
     def execute(
         self,
