@@ -36,7 +36,7 @@ export const MODULES = {
   },
   'student.growth': {
     title: '成长档案',
-    subtitle: '基于多篇有效评价形成内容、组织、语言三维能力画像与历史趋势。',
+    subtitle: '基于多篇有效评价形成内容、表达、发展三维能力画像与历史趋势。',
     stage: '阶段 7',
     capabilities: ['维度趋势与样本量说明', '优势与薄弱项识别', '争议与复核状态标注'],
     apis: ['GET /api/v1/growth/profile', 'GET /api/v1/growth/history'],

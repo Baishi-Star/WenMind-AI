@@ -9,7 +9,7 @@
           type="primary"
           @click="router.push('/student/essays/new')"
         >
-          新建作文
+          提交新作文
         </el-button>
       </template>
     </PageHeader>

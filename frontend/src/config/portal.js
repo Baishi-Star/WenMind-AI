@@ -1,24 +1,16 @@
 import {
+  ChatLineSquare,
+  Collection,
+  Connection,
   DataAnalysis,
-  Document,
   DocumentChecked,
-  EditPen,
   Files,
   FolderOpened,
   Histogram,
-  Management,
   Monitor,
-  Notebook,
-  Reading,
-  Setting,
-  Collection,
-  ChatLineSquare,
-  Connection,
   Odometer,
   Search,
-  Tickets,
   TrendCharts,
-  User,
 } from '@element-plus/icons-vue'
 
 export const ROLES = {
@@ -54,19 +46,13 @@ export const ROLES = {
 export const NAVIGATIONS = {
   student: [
     { path: '/student/dashboard', title: '学生首页', icon: Odometer, group: '学习概览' },
-    { path: '/student/tasks', title: '写作任务', icon: Files, group: '写作与评价' },
     { path: '/student/essays', title: '我的作文', icon: Files, group: '写作与评价' },
-    { path: '/student/essays/new', title: '作文提交', icon: EditPen, group: '写作与评价' },
     { path: '/student/evaluations', title: 'AI 评价结果', icon: DocumentChecked, group: '写作与评价' },
-    { path: '/student/revision', title: '修改工作台', icon: Notebook, group: '写作与评价' },
     { path: '/student/appeals', title: '我的申诉', icon: ChatLineSquare, group: '反馈与成长' },
     { path: '/student/growth', title: '成长档案', icon: TrendCharts, group: '反馈与成长' },
-    { path: '/student/training', title: '个性化训练', icon: Reading, group: '反馈与成长' },
   ],
   teacher: [
     { path: '/teacher/dashboard', title: '教师工作台', icon: Odometer, group: '教学概览' },
-    { path: '/teacher/classes', title: '班级管理', icon: User, group: '教学管理' },
-    { path: '/teacher/assignments', title: '作文任务', icon: Document, group: '教学管理' },
     { path: '/teacher/reviews', title: '评价复核', icon: DocumentChecked, group: '评价与复核' },
     { path: '/teacher/appeals', title: '申诉管理', icon: ChatLineSquare, group: '评价与复核' },
     { path: '/teacher/analytics', title: '班级学情分析', icon: Histogram, group: '分析与改进' },
@@ -77,9 +63,6 @@ export const NAVIGATIONS = {
     { path: '/admin/dashboard', title: '系统概览', icon: Monitor, group: '运行中心' },
     { path: '/admin/knowledge', title: '知识库管理', icon: FolderOpened, group: '知识与模型' },
     { path: '/admin/agents', title: 'Agent 运行监控', icon: Connection, group: '知识与模型' },
-    { path: '/admin/model', title: '模型配置', icon: Setting, group: '知识与模型' },
-    { path: '/admin/prompts', title: 'Prompt 管理', icon: Tickets, group: '知识与模型' },
-    { path: '/admin/logs', title: '系统运行日志', icon: Management, group: '运行中心' },
   ],
 }
 

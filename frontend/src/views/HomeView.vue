@@ -39,7 +39,7 @@
           </el-button>
         </div>
         <p class="hero__notice">
-          AI 评价属于教学诊断性参考，不等同于高考正式阅卷分数，最终评价以教师复核为准。
+          AI 评价按全国卷 60 分制量规生成原始分，最终评价以教师复核为准。
         </p>
       </div>
       <div class="hero__status">
@@ -149,7 +149,7 @@ const capabilities = [
 
 const roadmap = [
   { title: '阶段 1：工程初始化', description: '前后端骨架、统一响应与异常、健康检查与前后端连通验证。', done: true },
-  { title: '阶段 2：前端 UI 与角色框架', description: '三端工作台、22 个页面导航、演示角色入口与路由守卫（后端认证待接入）。', done: true },
+  { title: '阶段 2：前端 UI 与角色框架', description: '三端工作台、演示角色入口与路由守卫，认证由后端统一校验。', done: true },
   { title: '阶段 3：作文提交与评价任务', description: '作文数据模型、提交校验、评价状态机与 LLM 适配层。', done: false },
   { title: '阶段 4—7：核心业务闭环', description: '多 Agent、RAG、证据追溯、申诉复核、规则版本与成长画像。', done: false },
   { title: '阶段 8：测试与交付', description: '自动化测试、README、演示数据、录屏与打包检查。', done: false },

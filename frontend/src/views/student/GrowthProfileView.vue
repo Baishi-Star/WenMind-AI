@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="成长档案"
-      subtitle="从多篇真实作文的有效评价中分析内容、结构、语言表现；教师复核结果优先。"
+      subtitle="从多篇真实作文的有效评价中分析内容、表达、发展表现；教师复核结果优先。"
     >
       <template #tag>
         <el-tag

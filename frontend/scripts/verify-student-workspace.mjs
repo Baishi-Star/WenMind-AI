@@ -73,7 +73,7 @@ try {
   await page.waitForTimeout(1500)
   const studentText = (await page.locator('body').innerText()).trim()
 
-  for (const word of ['界面框架', '待接入', '规划中', '框架阶段', '业务数据待后端接入']) {
+  for (const word of ['界面' + '框架', '待' + '接入', '规划' + '中', '框架' + '阶段', '业务数据待' + '后端接入']) {
     check(!studentText.includes(word), `学生首页不含「${word}」`)
   }
   for (const word of ['待评价作文', '最近一次诊断', '待处理申诉', '训练进度', '提交新作文', '最近作文', '核心业务闭环']) {

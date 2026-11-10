@@ -7,20 +7,20 @@ import { useAuthStore } from '@/stores/auth'
 
 const studentRoutes = [
   { path: 'dashboard', name: 'student-dashboard', title: '学生首页', component: () => import('@/views/student/DashboardView.vue') },
-  { path: 'tasks', name: 'student-tasks', title: '写作任务', component: () => import('@/views/student/TaskListView.vue') },
+  { path: 'tasks', redirect: '/student/essays', title: '写作任务' },
   { path: 'essays', name: 'student-essays', title: '我的作文', component: () => import('@/views/student/EssayCenterView.vue') },
   { path: 'essays/new', name: 'student-essay-new', title: '作文提交', component: () => import('@/views/student/EssaySubmitView.vue') },
   { path: 'evaluations', name: 'student-evaluations', title: 'AI 评价结果', component: () => import('@/views/student/EvaluationDetailView.vue') },
-  { path: 'revision', name: 'student-revision', title: '修改工作台', component: () => import('@/views/student/RevisionWorkspaceView.vue') },
+  { path: 'revision', redirect: '/student/evaluations', title: '修改工作台' },
   { path: 'appeals', name: 'student-appeals', title: '我的申诉', component: () => import('@/views/student/MyAppealsView.vue') },
   { path: 'growth', name: 'student-growth', title: '成长档案', component: () => import('@/views/student/GrowthProfileView.vue') },
-  { path: 'training', name: 'student-training', title: '个性化训练', component: () => import('@/views/student/TrainingCenterView.vue') },
+  { path: 'training', redirect: '/student/growth', title: '个性化训练' },
 ]
 
 const teacherRoutes = [
   { path: 'dashboard', name: 'teacher-dashboard', title: '教师工作台', component: () => import('@/views/teacher/DashboardView.vue') },
-  { path: 'classes', name: 'teacher-classes', title: '班级管理', component: () => import('@/views/teacher/ClassManagementView.vue') },
-  { path: 'assignments', name: 'teacher-assignments', title: '作文任务', component: () => import('@/views/teacher/EssayAssignmentsView.vue') },
+  { path: 'classes', redirect: '/teacher/dashboard', title: '班级管理' },
+  { path: 'assignments', redirect: '/teacher/reviews', title: '作文任务' },
   { path: 'reviews', name: 'teacher-reviews', title: '评价复核', component: () => import('@/views/teacher/EvaluationReviewView.vue') },
   { path: 'appeals', name: 'teacher-appeals', title: '申诉管理', component: () => import('@/views/teacher/AppealManagementView.vue') },
   { path: 'analytics', name: 'teacher-analytics', title: '班级学情分析', component: () => import('@/views/teacher/ClassAnalyticsView.vue') },
@@ -33,9 +33,9 @@ const adminRoutes = [
   { path: 'dashboard', name: 'admin-dashboard', title: '系统概览', component: () => import('@/views/admin/DashboardView.vue') },
   { path: 'knowledge', name: 'admin-knowledge', title: '知识库管理', component: () => import('@/views/admin/KnowledgeBaseView.vue') },
   { path: 'agents', name: 'admin-agents', title: 'Agent 运行监控', component: () => import('@/views/admin/AgentMonitorView.vue') },
-  { path: 'model', name: 'admin-model', title: '模型配置', component: () => import('@/views/admin/ModelConfigView.vue') },
-  { path: 'prompts', name: 'admin-prompts', title: 'Prompt 管理', component: () => import('@/views/admin/PromptManagementView.vue') },
-  { path: 'logs', name: 'admin-logs', title: '系统运行日志', component: () => import('@/views/admin/SystemLogsView.vue') },
+  { path: 'model', redirect: '/admin/dashboard', title: '模型配置' },
+  { path: 'prompts', redirect: '/admin/dashboard', title: 'Prompt 管理' },
+  { path: 'logs', redirect: '/admin/dashboard', title: '系统运行日志' },
 ]
 
 function buildPortalRoutes(role, children) {

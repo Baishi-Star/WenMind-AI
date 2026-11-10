@@ -30,7 +30,6 @@
       <div class="welcome-card__meta">
         <span>当前角色</span>
         <strong>{{ roleInfo.name }}</strong>
-        <small>界面框架阶段 · 业务数据待后端接入</small>
       </div>
     </section>
 
@@ -54,7 +53,7 @@
               </el-icon>
               <span class="quick-card__text">
                 <strong>{{ item.title }}</strong>
-                <small>{{ item.path === roleInfo.homePath ? '当前工作台' : '界面框架 · 待接入业务数据' }}</small>
+                <small>{{ item.path === roleInfo.homePath ? '当前工作台' : '进入模块' }}</small>
               </span>
               <el-icon class="quick-card__arrow">
                 <ArrowRight />
@@ -103,7 +102,7 @@
                 :type="item.done ? 'success' : 'info'"
                 effect="plain"
               >
-                {{ item.done ? '已连通' : '待接入' }}
+                {{ item.done ? '可用' : '未启用' }}
               </el-tag>
             </li>
           </ul>

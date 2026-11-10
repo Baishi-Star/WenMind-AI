@@ -85,8 +85,8 @@ CodeArts Agent/
 │   ├── src/
 │   │   ├── api/                # Axios 实例与接口封装
 │   │   ├── assets/             # 静态资源
-│   │   ├── components/         # 页头、待接入页、后端状态卡、工作台等通用组件
-│   │   ├── config/             # 角色菜单（portal.js）与页面 API 契约（modules.js）
+│   │   ├── components/         # 页头、模块说明页、后端状态卡、工作台等通用组件
+│   │   ├── config/             # 角色菜单（portal.js）与页面功能说明（modules.js）
 │   │   ├── layouts/            # DefaultLayout 公共布局、PortalLayout 三端门户布局
 │   │   ├── router/             # 全部页面路由、登录守卫与角色守卫
 │   │   ├── stores/             # Pinia（app 健康检查、auth 演示角色会话）
@@ -319,11 +319,11 @@ npm run dev
 
 | 角色 | 路由 |
 |---|---|
-| 学生 | `/student/dashboard`、`/student/essays`、`/student/essays/new`、`/student/evaluations`、`/student/revision`、`/student/appeals`、`/student/growth`、`/student/training` |
-| 教师 | `/teacher/dashboard`、`/teacher/classes`、`/teacher/assignments`、`/teacher/reviews`、`/teacher/appeals`、`/teacher/analytics`、`/teacher/disputes`、`/teacher/rubrics` |
-| 管理员 | `/admin/dashboard`、`/admin/knowledge`、`/admin/agents`、`/admin/model`、`/admin/prompts`、`/admin/logs` |
+| 学生 | `/student/dashboard`、`/student/essays`、`/student/essays/new`、`/student/evaluations`、`/student/appeals`、`/student/growth` |
+| 教师 | `/teacher/dashboard`、`/teacher/reviews`、`/teacher/appeals`、`/teacher/analytics`、`/teacher/disputes`、`/teacher/rubrics` |
+| 管理员 | `/admin/dashboard`、`/admin/knowledge`、`/admin/agents` |
 
-除工作台中的真实后端健康状态外，上述业务页面均为明确标注的界面框架，不包含虚构业务数据。
+工作台与核心业务页面使用真实接口数据；少数尚未接入的模块以功能说明页呈现，不展示虚构业务数据。已下线的旧入口（如 `/student/tasks`、`/teacher/classes`、`/admin/model`）会自动重定向到保留页面。
 
 前端通过 Vite 代理将 `/api/*` 转发到 `VITE_PROXY_TARGET`（默认 `http://127.0.0.1:8000`），
 开发环境无跨域问题；直接访问后端时由后端 `BACKEND_CORS_ORIGINS` 白名单控制。
