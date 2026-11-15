@@ -1,0 +1,16 @@
+[Unit]
+Description=WenMind AI backend (FastAPI/uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/wenmind/current/backend
+# 敏感环境变量 (LLM_*/SECRET_KEY/DATABASE_URL/OCR_*) 由部署流程写入, 权限 600
+EnvironmentFile=/opt/wenmind/env/wenmind.env
+ExecStart=/opt/wenmind/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

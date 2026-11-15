@@ -392,3 +392,12 @@ cd backend
 | 阶段 | 内容 |
 |---|---|
 | 下一阶段（赛事交付） | 自动化测试补全、部署与演示文档、录屏脚本、ZIP 结构检查和过程留证 |
+## 十、云端部署
+
+> 详细流程见 [docs/deployment.md](docs/deployment.md)。部署脚本与模板见 [deploy/](deploy/)。
+
+- **流水线**：`WenMind-AI-CI`（CodeArts Pipeline，push 事件自动触发，`hook_id=1330536`）。
+- **四阶段**：① 代码检查与构建（前端 lint/build + 后端依赖安装，华为云镜像源）→ ② 单元测试（`pytest -q`，失败即红）→ ③ 制品归档（`wenmind-frontend-<tag>.tar.gz` / `wenmind-backend-<tag>.tar.gz`，tag = git short sha，上传 OBS 不允许覆盖）→ ④ 部署与验证（幂等部署 + systemd + nginx 反代 + 健康检查断言 `"code":0`，非 0 即流水线红）。
+- **数据持久化**：`/opt/wenmind/data/`（SQLite 与上传文件），部署/回滚全程不覆盖；版本切换用 `/opt/wenmind/current` 软链，回滚执行 `deploy/rollback.sh`。
+- **敏感信息**：全部走 CodeArts 密文参数（私密参数），脚本只引用变量名，禁止写入库。
+- **在线地址**：`http://<ECS公网IP>/`（部署后替换为实际地址；健康检查 `http://<ECS公网IP>/api/v1/health` 应返回 `{"code":0,...}`）。
