@@ -84,3 +84,21 @@ def test_student_task_submission_binds_prompt_and_student_title(client, db_sessi
     data = essay.json()["data"]
     assert data["prompt_id"] == task_prompt_id
     assert data["essay_title"] == "学生自拟标题"
+
+def test_teacher_task_without_title_uses_prompt_summary(client):
+    headers = login_headers(client, "demo_teacher")
+    rubric_id = _published_rubric_id(client, headers)
+    target = _class_target(client, headers)
+    prompt_text = "任务标题留空时，应自动取作文题目材料的前六十字作为任务标题。"
+    created = client.post(
+        "/api/v1/teacher/tasks",
+        json={
+            "prompt_text": prompt_text,
+            "requirements": "",
+            "rubric_version_id": rubric_id,
+            "targets": [target],
+        },
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["data"]["title"] == prompt_text[:60]

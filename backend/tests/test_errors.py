@@ -48,7 +48,9 @@ def test_agent_output_schema_rejects_invalid_json_and_missing_fields():
     with pytest.raises(json.JSONDecodeError):
         AgentLLMClient._extract_json("这不是 JSON")
     with pytest.raises(ValidationError):
-        AgentResult.model_validate({"agent_name": "topic_agent", "task": "分析"})
+        AgentResult.model_validate({"task": "分析"})
+    optional_analysis = AgentResult.model_validate({"agent_name": "topic_agent", "task": "分析"})
+    assert optional_analysis.analysis == ""
     parsed = AgentLLMClient._extract_json('```json\n{"ok": true}\n```')
     assert parsed == {"ok": True}
 

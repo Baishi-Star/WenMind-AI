@@ -187,14 +187,11 @@
         label-position="top"
         class="task-form"
       >
-        <el-form-item
-          label="任务标题"
-          required
-        >
+        <el-form-item label="任务标题">
           <el-input
             v-model.trim="form.title"
             maxlength="200"
-            placeholder="例如：议论文写作——邻里关系"
+            placeholder="可留空，默认取作文题目摘要"
           />
         </el-form-item>
         <el-form-item
@@ -526,8 +523,8 @@ function addQuestion() {
 
 async function submitForm() {
   formError.value = ''
-  if (form.title.trim().length < 2 || form.prompt_text.trim().length < 2) {
-    formError.value = '请填写任务标题和作文题目'
+  if (form.prompt_text.trim().length < 2) {
+    formError.value = '请填写作文题目 / 材料'
     return
   }
   if (!form.rubric_version_id) {
