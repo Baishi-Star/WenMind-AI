@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
 from app.models.base import UserRole, utc_now
+from app.models.essay import EssayPrompt
 from app.models.rubric import RubricVersion
 from app.models.submission import Submission
 from app.models.user import ClassRoom, Enrollment, User
@@ -53,6 +54,7 @@ def serialize_task(db: Session, task: WritingTask) -> TaskResponse:
         prompt_text=task.prompt_text,
         requirements=task.requirements,
         rubric_version_id=task.rubric_version_id,
+        prompt_id=task.prompt_id,
         word_min=task.word_min,
         word_max=task.word_max,
         allow_resubmit=task.allow_resubmit,
@@ -69,6 +71,33 @@ def serialize_task(db: Session, task: WritingTask) -> TaskResponse:
         target_class_names=class_names,
         question_count=len(task.questions),
     )
+
+
+def _resolve_task_prompt(
+    db: Session,
+    user: User,
+    prompt_text: str,
+    requirements: str,
+    rubric_version_id: int | None,
+) -> int | None:
+    """按材料文本匹配或创建命题；同一份材料复用同一条 EssayPrompt。"""
+    text = (prompt_text or "").strip()
+    if not text:
+        return None
+    title = text[:60]
+    existing = db.scalar(select(EssayPrompt).where(EssayPrompt.title == title).limit(1))
+    if existing is not None:
+        return existing.id
+    prompt = EssayPrompt(
+        title=title,
+        requirements=(requirements or "").strip(),
+        rubric_version_id=rubric_version_id,
+        is_demo=user.is_demo,
+        created_by=user.id,
+    )
+    db.add(prompt)
+    db.flush()
+    return prompt.id
 
 
 def _validate_time_range(start_at: datetime | None, due_at: datetime | None) -> None:
@@ -180,12 +209,14 @@ def create_task(db: Session, user: User, payload: TaskCreate) -> TaskResponse:
     _validate_time_range(payload.start_at, payload.due_at)
     _validate_word_range(payload.word_min, payload.word_max)
     _validate_rubric(db, payload.rubric_version_id)
+    prompt_id = _resolve_task_prompt(db, user, payload.prompt_text, payload.requirements, payload.rubric_version_id)
     task = WritingTask(
         title=payload.title.strip(),
         source_type=TaskSource.TEACHER,
         prompt_text=payload.prompt_text.strip(),
         requirements=payload.requirements.strip(),
         rubric_version_id=payload.rubric_version_id,
+        prompt_id=prompt_id,
         word_min=payload.word_min,
         word_max=payload.word_max,
         allow_resubmit=payload.allow_resubmit,
@@ -233,6 +264,10 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
         task.due_at = payload.due_at
     _validate_time_range(task.start_at, task.due_at)
     _validate_word_range(task.word_min, task.word_max)
+    if payload.prompt_text is not None or payload.requirements is not None or payload.rubric_version_id is not None:
+        task.prompt_id = _resolve_task_prompt(
+            db, user, task.prompt_text, task.requirements, task.rubric_version_id
+        )
     if payload.targets is not None:
         _replace_targets(db, task, user, payload.targets)
     if payload.questions is not None:

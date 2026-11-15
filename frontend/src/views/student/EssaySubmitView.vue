@@ -15,6 +15,69 @@
     </PageHeader>
     <div class="submit-layout">
       <section class="wm-card editor-card">
+        <div class="title-card">
+          <div class="title-card__head">
+            <h2>作文题目 / 材料</h2>
+            <el-tag
+              v-if="taskInfo"
+              size="small"
+              type="info"
+            >
+              教师布置
+            </el-tag>
+          </div>
+          <template v-if="taskInfo">
+            <p class="title-card__locked">
+              {{ taskInfo.prompt_text }}
+            </p>
+            <p
+              v-if="taskInfo.requirements"
+              class="title-card__requirements"
+            >
+              {{ taskInfo.requirements }}
+            </p>
+            <p class="title-card__word">
+              字数要求：{{ taskWordLabel }}
+            </p>
+          </template>
+          <p
+            v-else
+            class="title-card__locked"
+          >
+            自由作文（可自拟标题）
+          </p>
+          <p
+            v-if="titleLoadError"
+            class="title-card__warn"
+          >
+            {{ titleLoadError }}
+          </p>
+        </div>
+
+        <div class="title-card">
+          <div class="title-card__head">
+            <h2>我的作文标题</h2>
+          </div>
+          <el-input
+            v-model="essayTitle"
+            maxlength="60"
+            show-word-limit
+            placeholder="学生自拟标题，可留空；也可由手写稿第一行自动识别"
+          />
+          <p
+            v-if="titleHint"
+            class="title-card__ok"
+          >
+            {{ titleHint }}
+          </p>
+          <p
+            v-if="titleWarning"
+            class="title-card__warn"
+          >
+            {{ titleWarning }}
+          </p>
+        </div>
+
         <el-tabs
           v-model="activeTab"
           class="submit-tabs"
@@ -179,33 +242,12 @@
           label-position="top"
           @submit.prevent
         >
-          <el-form-item
-            label="作文题目"
-            required
+          <p
+            v-if="bodyHint"
+            class="hint body-hint"
           >
-            <el-select
-              v-model="form.prompt_id"
-              placeholder="请选择作文题目"
-              style="width: 100%"
-              :loading="promptsLoading"
-            >
-              <el-option
-                v-for="prompt in prompts"
-                :key="prompt.id"
-                :value="prompt.id"
-                :label="prompt.title"
-              />
-            </el-select>
-          </el-form-item>
-          <el-alert
-            v-if="selectedPrompt"
-            type="info"
-            :closable="false"
-            show-icon
-            title="写作要求"
-            :description="selectedPrompt.requirements"
-            class="prompt-alert"
-          />
+            {{ bodyHint }}
+          </p>
           <el-form-item
             label="作文正文"
             required
@@ -254,6 +296,10 @@
             >
               清空重填
             </el-button>
+            <span
+              v-if="!essayTitle.trim()"
+              class="hint"
+            >未填写标题，将按无标题作文评价</span>
           </div>
         </el-form>
       </section>
@@ -310,28 +356,33 @@ import PageHeader from '@/components/PageHeader.vue'
 import {
   createEssay,
   fetchEssay,
-  fetchEssayPrompts,
   fetchEssays,
   fetchOcrStatus,
   ocrEssay,
   updateEssay,
   uploadEssayImage,
 } from '@/api/essay'
+import { fetchStudentTask } from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const MAX_IMAGE_MB = 5
 
 const route = useRoute()
 const router = useRouter()
-const prompts = ref([])
 const recentEssays = ref([])
-const promptsLoading = ref(false)
 const historyLoading = ref(false)
 const savingMode = ref('')
 const editingEssayId = ref(null)
 const error = ref('')
 const form = reactive({ prompt_id: null, content: '' })
 const activeTab = ref('image')
+const essayTitle = ref('')
+
+const taskInfo = ref(null)
+const titleHint = ref('')
+const titleWarning = ref('')
+const titleLoadError = ref('')
+const bodyHint = ref('')
 const ocrEnabled = ref(false)
 const fileInput = ref(null)
 const image = reactive({
@@ -346,22 +397,29 @@ const image = reactive({
   error: '',
 })
 
-const selectedPrompt = computed(() => prompts.value.find((item) => item.id === form.prompt_id))
 const contentLength = computed(() => form.content.trim().length)
-const canSave = computed(() => Boolean(form.prompt_id && contentLength.value > 0 && contentLength.value <= 20000 && !savingMode.value))
+const canSave = computed(() => Boolean(contentLength.value > 0 && contentLength.value <= 20000 && !savingMode.value))
+const taskWordLabel = computed(() => {
+  const min = Number(taskInfo.value?.word_min || 0)
+  const max = Number(taskInfo.value?.word_max || 0)
+  if (min && max) return `${min}~${max} 字`
+  if (min) return `不少于 ${min} 字`
+  if (max) return `不超过 ${max} 字`
+  return '未特别要求'
+})
 
 function statusType(status) { return { completed: 'success', failed: 'danger', evaluating: 'warning', submitted: 'primary', draft: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '评价完成', failed: '评价失败', evaluating: '评价中', submitted: '已提交', draft: '草稿' }[status] || status }
 function formatSize(bytes) { return bytes ? `${(bytes / 1024 / 1024).toFixed(2)} MB` : '' }
 
-async function loadPrompts() {
-  promptsLoading.value = true
+async function loadTaskFromQuery() {
+  const taskId = Number(route.query.task_id)
+  if (!taskId) return
   try {
-    const response = await fetchEssayPrompts()
-    prompts.value = response.data
-    if (!form.prompt_id && prompts.value.length) form.prompt_id = prompts.value[0].id
-  } finally {
-    promptsLoading.value = false
+    const response = await fetchStudentTask(taskId)
+    taskInfo.value = response.data
+  } catch {
+    titleLoadError.value = '未能加载题目，请刷新重试'
   }
 }
 
@@ -395,6 +453,7 @@ async function loadDraft() {
   editingEssayId.value = draftId
   form.prompt_id = response.data.prompt_id
   form.content = response.data.content
+  if (response.data.essay_title) essayTitle.value = response.data.essay_title
   if (response.data.source_type === 'image') {
     image.token = response.data.image_path || ''
     image.ocrText = response.data.ocr_text || ''
@@ -486,7 +545,25 @@ async function recognizeImage() {
     if (response.data.status === 'parsed') {
       image.ocrText = response.data.text
       image.ocrDone = true
-      form.content = response.data.text
+      form.content = response.data.body_text || response.data.text
+      const detected = (response.data.detected_title || '').trim()
+      if (detected) {
+        bodyHint.value = '已移除标题行，如需保留请手动补回'
+        if (essayTitle.value.trim()) {
+          if (essayTitle.value.trim() === detected) {
+            titleHint.value = '识别到的标题与当前标题一致'
+            titleWarning.value = ''
+          } else {
+            titleWarning.value = `识别到的标题为「${detected}」，请确认`
+          }
+        } else {
+          essayTitle.value = detected
+          titleHint.value = '已从第一行识别标题，可修改'
+        }
+      } else {
+        bodyHint.value = ''
+        titleWarning.value = ''
+      }
       ElMessage.success('识别完成，请核对并修改后提交')
     } else {
       image.recognizeFailed = true
@@ -516,7 +593,19 @@ async function saveEssay(mode) {
   savingMode.value = mode
   error.value = ''
   try {
-    const payload = { prompt_id: form.prompt_id, content: form.content.trim(), submission_mode: mode }
+    const payload = {
+      content: form.content.trim(),
+      submission_mode: mode,
+      essay_title: essayTitle.value.trim() || null,
+    }
+    const taskId = Number(route.query.task_id)
+    if (taskId) {
+      payload.task_id = taskId
+      payload.prompt_id = taskInfo.value?.prompt_id ?? null
+    }
+    if (editingEssayId.value && form.prompt_id) {
+      payload.prompt_id = form.prompt_id
+    }
     if (activeTab.value === 'image' && image.token) {
       payload.source_type = 'image'
       payload.image_path = image.token
@@ -530,6 +619,7 @@ async function saveEssay(mode) {
       await router.push('/student/evaluations')
     } else {
       editingEssayId.value = response.data.id
+      form.prompt_id = response.data.prompt_id
       await loadHistory()
     }
   } catch (requestError) {
@@ -550,6 +640,10 @@ async function resetForm() {
   form.content = ''
   editingEssayId.value = null
   error.value = ''
+  essayTitle.value = ''
+  titleHint.value = ''
+  titleWarning.value = ''
+  bodyHint.value = ''
   removeImage()
 }
 
@@ -559,7 +653,7 @@ function openEssay(essay) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadPrompts(), loadHistory(), loadOcrFlag()])
+  await Promise.all([loadTaskFromQuery(), loadHistory(), loadOcrFlag()])
   await loadDraft()
 })
 
@@ -571,6 +665,15 @@ onBeforeUnmount(() => {
 <style scoped>
 .submit-layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: start; }
 .editor-card, .history-card { padding: 20px; }
+.title-card { margin-bottom: 18px; padding: 16px; border-radius: 12px; background: var(--wm-bg-soft); }
+.title-card__head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.title-card__head h2 { margin: 0; font-size: 16px; }
+.title-card__locked { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.title-card__requirements { margin: 0 0 6px; color: var(--wm-text-secondary); font-size: 12px; line-height: 1.7; }
+.title-card__word { margin: 0 0 6px; color: var(--wm-text-secondary); font-size: 12px; }
+.title-card__ok { margin: 8px 0 0; color: #15803d; font-size: 12px; }
+.title-card__warn { margin: 8px 0 0; color: #b45309; font-size: 12px; }
+.body-hint { margin: 0 0 8px; }
 .submit-tabs { margin-bottom: 12px; }
 .prompt-alert, .form-alert, .state-alert { margin-bottom: 14px; }
 .upload-zone { display: grid; gap: 10px; }

@@ -42,6 +42,7 @@ class WritingTask(TimestampMixin, Base):
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     requirements: Mapped[str] = mapped_column(Text, nullable=False, default="")
     rubric_version_id: Mapped[int | None] = mapped_column(ForeignKey("rubric_versions.id", ondelete="SET NULL"))
+    prompt_id: Mapped[int | None] = mapped_column(ForeignKey("essay_prompts.id", ondelete="SET NULL"), index=True)
     word_min: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     word_max: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     allow_resubmit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

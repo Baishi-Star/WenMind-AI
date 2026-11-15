@@ -53,6 +53,8 @@ class EvaluationResponse(BaseModel):
     id: int
     essay_id: int
     essay_version: int
+    essay_title: str | None = None
+    prompt_title: str | None = None
     rubric_version_id: int | None
     prompt_version: str
     original_total_score: float | None

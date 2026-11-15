@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import AppError, ConflictError, NotFoundError
 from app.models.agent_evaluation import EvaluationReport, RetrievalLog
 from app.models.base import EssayStatus, EvaluationStatus
-from app.models.essay import Essay
+from app.models.essay import Essay, EssayPrompt
 from app.models.evaluation import AgentRun, DimensionScore, Evaluation, FeedbackItem
 from app.models.rubric import RubricVersion
 from app.models.user import User
@@ -109,10 +109,14 @@ def _serialize_evaluation(db: Session, evaluation: Evaluation, include_details: 
             )
             for item in retrievals
         ]
+    essay = db.get(Essay, evaluation.essay_id)
+    prompt = db.get(EssayPrompt, essay.prompt_id) if essay and essay.prompt_id else None
     return EvaluationResponse(
         id=evaluation.id,
         essay_id=evaluation.essay_id,
         essay_version=evaluation.essay_version,
+        essay_title=essay.essay_title if essay else None,
+        prompt_title=prompt.title if prompt else None,
         rubric_version_id=evaluation.rubric_version_id,
         prompt_version=evaluation.prompt_version,
         original_total_score=evaluation.original_total_score,

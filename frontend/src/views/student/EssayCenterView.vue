@@ -56,11 +56,14 @@
           width="70"
         />
         <el-table-column
-          label="作文题目"
+          label="作文标题"
           min-width="240"
         >
           <template #default="{ row }">
-            <strong>{{ row.prompt_title || '自由作文' }}</strong><el-tag
+            <strong>{{ row.essay_title || '未命名作文' }}</strong>
+            <div class="muted">
+              {{ row.prompt_title || '自由作文' }}
+            </div><el-tag
               v-if="row.is_demo"
               size="small"
               effect="plain"

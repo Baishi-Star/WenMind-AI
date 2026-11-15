@@ -139,7 +139,7 @@ def collect_points(db: Session, student_id: int) -> list[GrowthPoint]:
             GrowthPoint(
                 evaluation_id=evaluation.id,
                 essay_id=essay.id,
-                essay_title=prompt_title or "自由作文",
+                essay_title=essay.essay_title or "未命名作文",
                 created_at=evaluation.created_at,
                 rubric_version_id=evaluation.rubric_version_id,
                 review_status=review_status,

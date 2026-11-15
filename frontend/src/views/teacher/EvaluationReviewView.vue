@@ -132,6 +132,12 @@
             <el-descriptions-item label="评价编号">
               #{{ detail.id }}
             </el-descriptions-item>
+            <el-descriptions-item label="作文题目（教师布置）">
+              {{ detail.prompt_title || '自由作文' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="作文标题（学生自拟）">
+              {{ detail.essay_title || '未填写标题' }}
+            </el-descriptions-item>
             <el-descriptions-item label="状态">
               {{ detail.status }}
             </el-descriptions-item>

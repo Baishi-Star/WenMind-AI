@@ -16,6 +16,7 @@ class TeacherAppealListItem(BaseModel):
     student_name: str
     class_names: list[str]
     essay_title: str
+    prompt_title: str | None = None
     reason_type: str
     dimension: str
     description: str
@@ -54,6 +55,7 @@ class TeacherAppealDetail(BaseModel):
     student_name: str
     class_names: list[str]
     essay_title: str
+    prompt_title: str | None = None
     essay_content: str
     reason_type: str
     dimension: str

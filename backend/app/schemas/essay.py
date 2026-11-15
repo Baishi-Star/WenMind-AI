@@ -12,6 +12,9 @@ class EssayCreate(BaseModel):
     source_type: Literal["text", "image"] = "text"
     image_path: str | None = None
     ocr_text: str | None = None
+    essay_title: str | None = None
+    requirements: str | None = None
+    task_id: int | None = None
 
     @field_validator("content")
     @classmethod
@@ -37,6 +40,8 @@ class EssayOcrResponse(BaseModel):
     status: str
     text: str
     message: str
+    detected_title: str | None = None
+    body_text: str = ""
 
 
 class EssayOcrStatusResponse(BaseModel):
@@ -73,6 +78,7 @@ class EssayListItem(BaseModel):
     student_name: str
     prompt_id: int | None
     prompt_title: str | None
+    essay_title: str | None = None
     content_version: int
     char_count: int
     status: str

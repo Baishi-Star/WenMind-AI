@@ -80,6 +80,7 @@ class TaskResponse(BaseModel):
     prompt_text: str
     requirements: str
     rubric_version_id: int | None
+    prompt_id: int | None = None
     word_min: int
     word_max: int
     allow_resubmit: bool
@@ -103,6 +104,7 @@ class StudentTaskResponse(BaseModel):
     prompt_text: str
     requirements: str
     rubric_version_id: int | None
+    prompt_id: int | None = None
     word_min: int
     word_max: int
     allow_resubmit: bool

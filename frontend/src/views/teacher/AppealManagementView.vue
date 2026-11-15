@@ -106,7 +106,10 @@
           min-width="220"
         >
           <template #default="{ row }">
-            {{ row.essay_title }}
+            {{ row.essay_title || '未填写标题' }}
+            <div class="muted">
+              命题：{{ row.prompt_title || '自由作文' }}
+            </div>
             <div class="muted">
               评价 #{{ row.evaluation_id }} · 作文 #{{ row.essay_id }}
             </div>
@@ -180,8 +183,8 @@
           <section class="review-summary">
             <div>
               <span class="eyebrow">STUDENT APPEAL</span>
-              <h2>{{ detail.student_name }} · {{ detail.essay_title }}</h2>
-              <p>{{ detail.class_names.join('、') }} · 申诉提交 {{ formatDateTime(detail.submitted_at) }}</p>
+              <h2>{{ detail.student_name }} · {{ detail.essay_title || '未填写标题' }}</h2>
+              <p>{{ detail.prompt_title || '自由作文' }} · {{ detail.class_names.join('、') }} · 申诉提交 {{ formatDateTime(detail.submitted_at) }}</p>
             </div>
             <el-tag
               :type="statusType(detail.status)"

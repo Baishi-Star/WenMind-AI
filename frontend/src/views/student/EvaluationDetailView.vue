@@ -137,6 +137,13 @@
           class="page-error"
           @close="pageError = ''"
         />
+        <div
+          v-if="currentEvaluation"
+          class="essay-titles"
+        >
+          <span>作文题目（教师布置）：<strong>{{ currentEvaluation.prompt_title || '自由作文' }}</strong></span>
+          <span>作文标题（学生自拟）：<strong>{{ currentEvaluation.essay_title || '未填写标题' }}</strong></span>
+        </div>
         <EvaluationProcess
           v-if="currentEvaluation"
           :evaluation="currentEvaluation"
@@ -347,6 +354,8 @@ onUnmounted(stopPolling)
 .task-entry small { grid-column: 1 / -1; color: var(--wm-text-secondary); }
 .evaluation-main { min-width: 0; }
 .current-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.essay-titles { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; padding: 12px 14px; border-radius: 10px; background: var(--wm-bg-soft); color: var(--wm-text-secondary); font-size: 12px; }
+.essay-titles strong { color: var(--wm-text-main); }
 .page-error { margin-bottom: 14px; }
 .empty-evaluation { padding: 50px 20px; }
 

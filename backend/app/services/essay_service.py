@@ -10,7 +10,9 @@ from app.core.exceptions import AppError, ConflictError, NotFoundError, Permissi
 from app.core.logging import get_logger
 from app.models.base import EssayStatus, UserRole
 from app.models.essay import Essay, EssayPrompt
+from app.models.rubric import RubricVersion
 from app.models.user import User
+from app.models.writing_task import WritingTask
 from app.schemas.common import PageData
 from app.schemas.essay import (
     EssayCreate,
@@ -87,7 +89,14 @@ def recognize_essay_image(token: str) -> EssayOcrResponse:
         text = ocr_service.recognize(path, mime)
     except ocr_service.OcrFailure:
         return EssayOcrResponse(status="failed", text="", message="识别失败，请重传图片或手动输入正文")
-    return EssayOcrResponse(status="parsed", text=text, message="")
+    detected_title, body_text = ocr_service.extract_title_and_body(text)
+    return EssayOcrResponse(
+        status="parsed",
+        text=text,
+        message="",
+        detected_title=detected_title,
+        body_text=body_text,
+    )
 
 
 def _serialize_list_item(essay: Essay, student_name: str, prompt_title: str | None) -> EssayListItem:
@@ -97,6 +106,7 @@ def _serialize_list_item(essay: Essay, student_name: str, prompt_title: str | No
         student_name=student_name,
         prompt_id=essay.prompt_id,
         prompt_title=prompt_title,
+        essay_title=essay.essay_title,
         content_version=essay.content_version,
         char_count=essay.char_count,
         status=essay.status,
@@ -150,9 +160,40 @@ def _validate_content(content: str) -> None:
         raise AppError(f"作文正文不能超过 {settings.essay_max_chars} 字，当前为 {len(content)} 字")
 
 
+TITLE_MIN_CHARS = 2
+TITLE_MAX_CHARS = 120
+
+
+def _normalize_title(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    text = raw.strip()
+    changed = True
+    while changed and text:
+        changed = False
+        for left, right in (("《", "》"), ("“", "”"), ("‘", "’"), ("「", "」"), ("【", "】")):
+            if text.startswith(left) and text.endswith(right) and len(text) > len(left) + len(right):
+                text = text[len(left) : -len(right)].strip()
+                changed = True
+    text = text.lstrip("#").strip().rstrip("。，、；;,. ")
+    if len(text) < TITLE_MIN_CHARS:
+        return None
+    if len(text) > TITLE_MAX_CHARS:
+        logger.warning("作文标题超过 %s 字，已截断", TITLE_MAX_CHARS)
+        text = text[:TITLE_MAX_CHARS]
+    return text
+
+
+
 def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
     _validate_content(payload.content)
     _validate_prompt(db, payload.prompt_id)
+    prompt_id = payload.prompt_id
+    if payload.task_id is not None:
+        task = db.get(WritingTask, payload.task_id)
+        if task is not None:
+            prompt_id = task.prompt_id
+    essay_title = _normalize_title(payload.essay_title)
     source_type = payload.source_type or "text"
     image_path = payload.image_path
     ocr_status = "none"
@@ -166,7 +207,7 @@ def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
             ocr_status = "parsed"
     essay = Essay(
         student_id=user.id,
-        prompt_id=payload.prompt_id,
+        prompt_id=prompt_id,
         content=payload.content,
         content_version=1,
         char_count=len(payload.content),
@@ -176,6 +217,7 @@ def create_essay(db: Session, user: User, payload: EssayCreate) -> Essay:
         image_path=image_path,
         ocr_status=ocr_status,
         ocr_text=payload.ocr_text,
+        essay_title=essay_title,
     )
     db.add(essay)
     db.commit()
