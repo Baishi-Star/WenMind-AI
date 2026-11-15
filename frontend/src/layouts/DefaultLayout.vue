@@ -55,7 +55,7 @@
 
     <footer class="layout-footer">
       <span>让每一次作文评价，都成为下一次写作成长的起点。</span>
-      <span class="wm-muted">AI 评价为教学诊断性参考，不等同于高考正式阅卷分数。</span>
+      <span class="wm-muted">AI 评价按全国卷 60 分制量规生成原始分，最终以教师复核为准。</span>
     </footer>
   </div>
 </template>

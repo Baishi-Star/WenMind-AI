@@ -24,12 +24,12 @@ from app.schemas.growth import (
 )
 from app.services.access_service import assert_student_access
 
-SCORED_DIMENSIONS = ("content", "organization", "language")
-DIMENSION_LABELS = {"content": "内容能力", "organization": "结构能力", "language": "语言能力"}
+SCORED_DIMENSIONS = ("content", "expression", "development")
+DIMENSION_LABELS = {"content": "内容能力", "expression": "表达能力", "development": "发展能力"}
 DIMENSION_SOURCE = {
-    "content": "content 维度有效诊断",
-    "organization": "organization 维度有效诊断",
-    "language": "language 维度有效诊断",
+    "content": "content 维度有效得分",
+    "expression": "expression 维度有效得分",
+    "development": "development 维度有效得分",
 }
 
 TRAINING_LIBRARY = {
@@ -39,17 +39,17 @@ TRAINING_LIBRARY = {
         "objective": "提升论据选择与论证深度",
         "content": "选择最近一篇作文的核心观点，补充至少两条不同类型的论据，并写出“论据 → 分析 → 观点”的完整解释链，避免只罗列事例。",
     },
-    "organization": {
-        "task_type": "paragraph_organization",
-        "ability": "organization",
-        "objective": "提升段落功能与结构衔接",
-        "content": "重写一篇旧作文的提纲：为开头、主体、结尾标注功能，并检查每个段落是否承担明确任务、段间是否存在可说明的推进关系。",
+    "expression": {
+        "task_type": "structure_expression",
+        "ability": "expression",
+        "objective": "提升结构与语言表达",
+        "content": "重写一篇旧作文的提纲：为开头、主体、结尾标注功能，检查段落任务与段间推进；再选取一段保留原意改写为长短句结合，比较指代与衔接。",
     },
-    "language": {
-        "task_type": "sentence_variation",
-        "ability": "language",
-        "objective": "提升句式变化与表达准确性",
-        "content": "选取最近作文中的一段，保留原意和表达风格，分别改写为长短句结合、由因到果两种版本，并比较指代、衔接和语气的差异。",
+    "development": {
+        "task_type": "development_features",
+        "ability": "development",
+        "objective": "提升立意深度、材料丰富与表达创意",
+        "content": "围绕同一主题补充一则时代新素材，写出“素材 → 分析 → 观点”的完整链条，并尝试用一个新颖角度深化立意。",
     },
     "advanced": {
         "task_type": "advanced_expression",
@@ -323,7 +323,7 @@ def _task_specs(averages: dict[str, float], sample_count: int) -> list[dict]:
             {
                 **library,
                 "reason": (
-                    f"最近有效评价的{DIMENSION_LABELS[dimension]}均值为 {value:.2f}/5，"
+                    f"最近有效评价的{DIMENSION_LABELS[dimension]}均值为 {value:.2f}/20，"
                     f"低于弱项阈值 {settings.growth_weak_threshold:.1f}（样本 {sample_count} 篇）。"
                     "该判断只基于真实诊断记录，不代表长期能力定论。"
                 ),
@@ -337,7 +337,7 @@ def _task_specs(averages: dict[str, float], sample_count: int) -> list[dict]:
                 **library,
                 "reason": (
                     f"最近有效评价未发现低于 {settings.growth_weak_threshold:.1f} 的计分维度，"
-                    f"{DIMENSION_LABELS[best_dimension]}均值 {averages[best_dimension]:.2f}/5 相对稳定，"
+                    f"{DIMENSION_LABELS[best_dimension]}均值 {averages[best_dimension]:.2f}/20 相对稳定，"
                     f"可进行高阶表达挑战（样本 {sample_count} 篇）。"
                 ),
             }

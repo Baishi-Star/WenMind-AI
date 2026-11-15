@@ -227,6 +227,7 @@ import { ArrowRight } from '@element-plus/icons-vue'
 
 import DemoSessionTag from '@/components/DemoSessionTag.vue'
 import PageHeader from '@/components/PageHeader.vue'
+import { fetchCurrentUser } from '@/api/auth'
 import { fetchAppeals } from '@/api/appeal'
 import { fetchEssays } from '@/api/essay'
 import { fetchEvaluations } from '@/api/evaluation'
@@ -384,6 +385,12 @@ function goEssay(item) {
 }
 
 async function loadDashboard() {
+  if (!authStore.isAuthenticated) return
+  try {
+    await fetchCurrentUser()
+  } catch {
+    return
+  }
   const [essays, evaluations, appeals, training] = await Promise.allSettled([
     fetchEssays({ page: 1, page_size: 50 }),
     fetchEvaluations({ page: 1, page_size: 50 }),

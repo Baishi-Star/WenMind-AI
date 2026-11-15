@@ -24,14 +24,26 @@ def _paragraph_evidence(essay_content: str, paragraph_index: int, reason: str, s
     ]
 
 
+def _grade(score: int) -> str:
+    if score >= 17:
+        return "一等"
+    if score >= 12:
+        return "二等"
+    if score >= 7:
+        return "三等"
+    return "四等"
+
+
 def _score(essay_content: str, dimension: str) -> int:
     paragraphs = [part for part in re.split(r"\n\s*\n", essay_content) if part.strip()]
     connectors = ("因此", "但是", "首先", "其次", "最后", "同时", "然而", "所以")
     if dimension == "content":
-        return min(5, 2 + int(len(essay_content) >= 350) + int(any(word in essay_content for word in ("例如", "比如", "案例", "事实"))))
-    if dimension == "organization":
-        return min(5, 2 + int(len(paragraphs) >= 3) + int(any(word in essay_content for word in connectors)))
-    return min(5, 2 + int(len(essay_content) >= 250) + int("，" in essay_content and "。" in essay_content))
+        base = 8 + (4 if len(essay_content) >= 350 else 0) + (4 if any(word in essay_content for word in ("例如", "比如", "案例", "事实")) else 0)
+    elif dimension == "expression":
+        base = 8 + (4 if len(paragraphs) >= 3 else 0) + (4 if any(word in essay_content for word in connectors) else 0)
+    else:
+        base = 8 + (4 if len(essay_content) >= 350 else 0) + (4 if any(word in essay_content for word in ("然而", "但是", "不仅", "更是", "并非")) else 0)
+    return max(0, min(20, base))
 
 
 def run_mock_agent(
@@ -58,18 +70,19 @@ def run_mock_agent(
 
     dimension_map = {
         "content_agent": ("content", "内容", 1, "补充具体论据，并解释论据与中心观点之间的关系"),
-        "structure_agent": ("organization", "组织", 1, "检查段落功能、论证顺序以及段间衔接"),
-        "language_agent": ("language", "语言", 0, "检查长句、搭配、指代和句式变化，避免只堆砌修辞"),
+        "expression_agent": ("expression", "表达", 1, "检查段落功能、层次衔接、长句与句式变化，避免堆砌修辞"),
+        "development_agent": ("development", "发展", 0, "在立意深度、材料丰富、文采与创意上寻找可提升特征"),
     }
     if agent_name in dimension_map:
         dimension, label, paragraph_index, suggestion = dimension_map[agent_name]
         score = _score(essay_content, dimension)
+        grade_value = _grade(score)
         return AgentResult(
             **common,
             dimension=dimension,
             diagnostic_score=score,
-            grade=f"诊断等级 {score}/5（非正式分数）",
-            analysis=f"Mock 规则分析（非模型推理）：{label}维度仅根据字数、段落和连接词等表面特征生成诊断值 {score}/5，不代表对{label}质量的语义判断。",
+            grade=f"{grade_value}（{score}/20）",
+            analysis=f"Mock 规则分析（非模型推理）：{label}维度仅根据字数、段落和连接词等表面特征生成维度得分 {score}/20（{grade_value}），不代表对{label}质量的语义判断。",
             evidence=_paragraph_evidence(essay_content, paragraph_index, f"{label}维度流程证据", suggestion),
             suggestions=[f"Mock 建议：{suggestion}"],
             strengths=[f"Mock 可核验特征：作文包含 {paragraphs} 个段落，正文 {len(essay_content)} 字"],
@@ -81,10 +94,10 @@ def run_mock_agent(
         weakest = min(scores, key=scores.get) if scores else "content"
         return AgentResult(
             **common,
-            analysis="Mock 汇总（非模型推理）：已收集审题、内容、结构、语言 Agent 的结构化结果，仅进行字段汇总，不生成虚构综合评价。",
+            analysis="Mock 汇总（非模型推理）：已收集审题、内容、表达、发展 Agent 的结构化结果，仅进行字段汇总，不生成虚构综合评价。",
             overall_summary="本次为 Mock 流程演示：系统已完成多 Agent 调度、RAG 记录、结构化结果和证据位置校验；作文的实际质量需由真实模型或教师判断。",
             evidence=[evidence for result in previous_results for evidence in result.evidence][:4],
-            strengths=["已形成内容、组织、语言三维度的诊断性记录"],
+            strengths=["已形成内容、表达、发展三维度的评分记录"],
             problems=["Mock 模式不具备语义理解能力，不能据此判断作文真实水平"],
             suggestions=["切换到真实模型后复核诊断内容，或由教师直接复核"],
             training_suggestions=[f"建议优先人工检查 {weakest} 维度，再确定训练任务；Mock 不自动下结论"],

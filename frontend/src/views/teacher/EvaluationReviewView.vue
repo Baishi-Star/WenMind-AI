@@ -60,7 +60,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="AI 诊断维度"
+          label="AI 维度得分"
           min-width="240"
         >
           <template #default="{ row }">
@@ -149,7 +149,7 @@
             >
               <span>{{ dimensionLabel(item.dimension) }}</span>
               <strong>{{ item.original_score ?? '—' }}/{{ item.max_score }}</strong>
-              <small>教师最终值 {{ item.final_score ?? '未复核' }}</small>
+              <small>教师最终得分 {{ item.final_score ?? '未复核' }}</small>
             </div>
           </div>
           <el-alert
@@ -200,7 +200,7 @@ const drawerVisible = ref(false)
 const detailLoading = ref(false)
 const detail = ref(null)
 
-function dimensionLabel(value) { return { content: '内容', organization: '结构', language: '语言' }[value] || value }
+function dimensionLabel(value) { return { content: '内容', expression: '表达', development: '发展', organization: '结构（旧）', language: '语言（旧）' }[value] || value }
 
 async function loadEvaluations() {
   loading.value = true

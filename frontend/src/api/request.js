@@ -21,6 +21,8 @@ request.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
+let unauthorizedRedirecting = false
+
 request.interceptors.response.use(
   (response) => {
     const body = response.data
@@ -49,9 +51,17 @@ request.interceptors.response.use(
     if (normalized.status === 401) {
       localStorage.removeItem('wenmind_token')
       localStorage.removeItem('wenmind_auth_session')
-      if (window.location.pathname !== '/login') {
+      if (window.location.pathname !== '/login' && !unauthorizedRedirecting) {
+        unauthorizedRedirecting = true
         window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
       }
+      return Promise.reject(normalized)
+    }
+    if (normalized.status === 403) {
+      if (!error.config?.silent) {
+        ElMessage.warning('当前角色无权访问该功能')
+      }
+      return Promise.reject(normalized)
     }
     if (!error.config?.silent) {
       ElMessage.error(message)

@@ -20,7 +20,7 @@ def _appeal_for_detail(client, headers, detail):
             "evaluation_id": detail["id"],
             "feedback_item_id": feedback["id"],
             "reason_type": "creative_expression_misjudged",
-            "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "organization", "language", "overall", "topic"} else "overall",
+            "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "expression", "development", "organization", "language", "overall", "topic"} else "overall",
             "description": "这段表达是我有意的个人风格，希望教师结合原文核查是否存在误判。",
             "evidence": evidence,
         },
@@ -50,9 +50,9 @@ def test_similar_disputes_generate_proposal_and_publish_tested_version(client, d
             "change_reason": "教师复核依据原文证据完成判断，结论和理由均进入复核记录。",
             "dimension_updates": (
                 [
-                    {"dimension": "content", "final_score": 4},
-                    {"dimension": "organization", "final_score": 4},
-                    {"dimension": "language", "final_score": 4},
+                    {"dimension": "content", "final_score": 16},
+                    {"dimension": "expression", "final_score": 15},
+                    {"dimension": "development", "final_score": 15},
                 ]
                 if index == 0
                 else []

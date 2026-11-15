@@ -44,6 +44,9 @@ class EvaluationStatus:
 
 class Dimension:
     CONTENT = "content"
+    EXPRESSION = "expression"
+    DEVELOPMENT = "development"
+    ALL = (CONTENT, EXPRESSION, DEVELOPMENT)
+    # 兼容历史量规（v1.0）的旧维度值，仅用于读取既有数据
     ORGANIZATION = "organization"
     LANGUAGE = "language"
-    ALL = (CONTENT, ORGANIZATION, LANGUAGE)

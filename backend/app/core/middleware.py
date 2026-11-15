@@ -17,14 +17,17 @@ def register_middlewares(app: FastAPI) -> None:
         request.state.request_id = request_id
         token = request_id_var.set(request_id)
         start = time.perf_counter()
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
         finally:
             elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
             logger.info(
-                "%s %s cost=%sms request_id=%s",
+                "%s %s status=%s cost=%sms request_id=%s",
                 request.method,
                 request.url.path,
+                status_code,
                 elapsed_ms,
                 request_id,
             )

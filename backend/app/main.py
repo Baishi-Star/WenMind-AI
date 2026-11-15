@@ -15,7 +15,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import get_logger, setup_logging
 from app.core.middleware import register_middlewares
 from app.db.init_db import init_database
-from app.db.seed import seed_demo_data
+from app.db.seed import ensure_grading_rubric, seed_demo_data
 from app.db.session import SessionLocal
 from app.schemas.common import ApiResponse, success
 
@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
         if settings.auto_seed_demo:
             with SessionLocal() as db:
                 seed_demo_data(db)
+                ensure_grading_rubric(db)
     logger.info(
         "%s v%s 启动，环境=%s，API 前缀=%s，LLM 模式=%s",
         settings.app_name,

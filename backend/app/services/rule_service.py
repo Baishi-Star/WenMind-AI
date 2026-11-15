@@ -290,7 +290,7 @@ def run_regression_test(db: Session, user: User, version_id: int) -> RegressionR
     checks.append(
         {
             "name": "三维度结构完整",
-            "passed": {"content", "organization", "language"}.issubset(present),
+            "passed": {"content", "expression", "development"}.issubset(present),
             "detail": f"实际维度：{', '.join(sorted(present))}",
         }
     )

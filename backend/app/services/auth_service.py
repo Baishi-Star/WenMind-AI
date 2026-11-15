@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, UnauthorizedError
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, hash_password, needs_rehash, verify_password
 from app.models.base import UserRole
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest
@@ -33,5 +33,8 @@ def authenticate_user(db: Session, payload: LoginRequest) -> tuple[User, str, in
         raise UnauthorizedError("用户名或密码错误")
     if user.status != "active":
         raise UnauthorizedError("账号已被停用")
+    if needs_rehash(user.password_hash):
+        user.password_hash = hash_password(payload.password)
+        db.commit()
     token, expires_in = create_access_token(user.id, user.role)
     return user, token, expires_in

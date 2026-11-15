@@ -30,13 +30,13 @@ let chart = null
 
 const dimensionNames = {
   content: '内容能力',
-  organization: '结构能力',
-  language: '语言能力',
+  expression: '表达能力',
+  development: '发展能力',
 }
 const dimensionColors = {
   content: '#6366f1',
-  organization: '#0d9488',
-  language: '#a855f7',
+  expression: '#0d9488',
+  development: '#a855f7',
 }
 
 function buildOption() {
@@ -56,7 +56,7 @@ function buildOption() {
         if (!point) return ''
         const lines = [`作文 #${point.essay_id} · ${point.essay_title}`]
         params.forEach((item) => {
-          if (item.value !== null && item.value !== undefined) lines.push(`${item.seriesName}：${item.value}/5`)
+          if (item.value !== null && item.value !== undefined) lines.push(`${item.seriesName}：${item.value}/20`)
         })
         lines.push(`评价来源：${point.review_status === 'teacher_confirmed' ? '教师复核确认' : 'AI 原始诊断（未复核）'}`)
         if (point.rubric_version_id) lines.push(`量规版本：#${point.rubric_version_id}`)
@@ -80,9 +80,9 @@ function buildOption() {
     },
     yAxis: {
       type: 'value',
-      min: 1,
-      max: 5,
-      interval: 1,
+      min: 0,
+      max: 20,
+      interval: 4,
       axisLabel: { color: '#7b8499', fontSize: 11, formatter: '{value}' },
       splitLine: { lineStyle: { color: '#eef1f7', type: 'dashed' } },
     },
@@ -110,9 +110,9 @@ function buildOption() {
         markLine: {
           silent: true,
           symbol: 'none',
-          label: { formatter: '弱项参考线 3.5', color: '#9ca3af', fontSize: 10 },
+          label: { formatter: '弱项参考线 14', color: '#9ca3af', fontSize: 10 },
           lineStyle: { color: '#d1d5db', type: 'dashed' },
-          data: [{ yAxis: 3.5 }],
+          data: [{ yAxis: 14 }],
         },
       },
     ],

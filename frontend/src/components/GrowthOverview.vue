@@ -26,7 +26,7 @@
 
     <section class="wm-card capability-section">
       <div class="section-head">
-        <h2>能力概览</h2><span>诊断值范围 1–5，不是正式考试分</span>
+        <h2>能力概览</h2><span>维度得分范围 0–20（全国卷 60 分制）</span>
       </div>
       <div class="capability-grid">
         <article
@@ -54,7 +54,7 @@
               暂无数据
             </el-tag>
           </div>
-          <strong v-if="item.available">{{ item.score }}<small>/5</small></strong>
+          <strong v-if="item.available">{{ item.score }}<small>/20</small></strong>
           <strong
             v-else
             class="is-empty"
@@ -63,7 +63,7 @@
             v-if="item.available"
             class="capability-bar"
           >
-            <span :style="{ width: `${((item.score || 0) / 5) * 100}%` }" />
+            <span :style="{ width: `${((item.score || 0) / 20) * 100}%` }" />
           </div>
           <p>{{ item.note }}</p>
           <small v-if="item.available">来源：{{ item.source }} · 样本 {{ item.sample_count }}</small>
@@ -140,19 +140,19 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="结构"
+          label="表达"
           width="70"
         >
           <template #default="{ row }">
-            {{ row.scores.organization ?? '—' }}
+            {{ row.scores.expression ?? '—' }}
           </template>
         </el-table-column>
         <el-table-column
-          label="语言"
+          label="发展"
           width="70"
         >
           <template #default="{ row }">
-            {{ row.scores.language ?? '—' }}
+            {{ row.scores.development ?? '—' }}
           </template>
         </el-table-column>
         <el-table-column

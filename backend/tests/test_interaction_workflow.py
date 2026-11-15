@@ -28,7 +28,7 @@ def _appeal_payload(detail, feedback):
         "evaluation_id": detail["id"],
         "feedback_item_id": feedback["id"],
         "reason_type": "creative_expression_misjudged",
-        "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "organization", "language", "overall", "topic"} else "overall",
+        "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "expression", "development", "organization", "language", "overall", "topic"} else "overall",
         "description": "这句话是我有意的表达，希望教师结合上下文复核，而不是按固定句式直接判错。",
         "evidence": evidence,
     }
@@ -63,7 +63,8 @@ def test_draft_submit_evaluation_and_verified_evidence(client, db_session, evalu
     assert detail["status"] == "completed"
     assert len(detail["agent_runs"]) == 6
     assert detail["report"]["execution_mode"] == "mock"
-    assert detail["original_total_score"] is None
+    assert detail["original_total_score"] is not None
+    assert 0 <= detail["original_total_score"] <= 60
     assert detail["final_total_score"] is None
     assert len(detail["feedback_items"]) > 0
     assert detail["retrievals"][0]["search_mode"] == "local_tfidf"
@@ -166,9 +167,9 @@ def test_appeal_teacher_review_preserves_ai_original_and_blocks_cross_class(clie
             "decision": "adjust",
             "change_reason": "教师复核确认该表达属于有意设计，调整语言维度并保留学生风格。",
             "dimension_updates": [
-                {"dimension": "content", "final_score": 4},
-                {"dimension": "organization", "final_score": 4},
-                {"dimension": "language", "final_score": 5},
+                {"dimension": "content", "final_score": 16},
+                {"dimension": "expression", "final_score": 16},
+                {"dimension": "development", "final_score": 17},
             ],
             "feedback_changes": [
                 {

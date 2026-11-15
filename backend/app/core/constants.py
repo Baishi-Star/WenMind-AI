@@ -11,10 +11,13 @@ ISSUE_TAGS = {
 
 DIMENSION_AGENT = {
     "content": "content_agent",
-    "organization": "structure_agent",
-    "language": "language_agent",
+    "expression": "expression_agent",
+    "development": "development_agent",
     "topic": "topic_agent",
     "overall": "feedback_agent",
+    # 兼容历史量规（v1.0）的旧维度追溯
+    "organization": "structure_agent",
+    "language": "language_agent",
 }
 
 REASON_TAG_MAP = {

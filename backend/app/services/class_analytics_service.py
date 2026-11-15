@@ -147,10 +147,10 @@ def get_class_analytics(db: Session, user: User, class_id: int) -> ClassAnalytic
                 "title": f"优先补强{DIMENSION_LABELS[weakest]}",
                 "description": {
                     "content": "围绕论据与观点的解释链开展片段写作训练，减少只罗列素材的写法。",
-                    "organization": "用提纲重构训练段落功能与论证顺序，检查段间过渡。",
-                    "language": "开展保留原意的改写训练，关注句式变化、指代和衔接。",
+                    "expression": "用提纲重构训练段落功能与论证顺序，并结合保留原意的改写训练句式与衔接。",
+                    "development": "围绕立意深度、材料丰富与表达创意开展片段训练，尝试新颖角度深化主旨。",
                 }[weakest],
-                "basis": f"班级{DIMENSION_LABELS[weakest]}均值为 {dimension_averages[weakest]:.2f}/5，样本 {len(dimension_values[weakest])} 条。",
+                "basis": f"班级{DIMENSION_LABELS[weakest]}均值为 {dimension_averages[weakest]:.2f}/20，样本 {len(dimension_values[weakest])} 条。",
                 "source": "rule_based",
             }
         )

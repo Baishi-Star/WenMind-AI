@@ -1,0 +1,31 @@
+{
+  "timestamp": "20261111-194200",
+  "backup": "data\\backups\\wenmind-20261111-194200.db",
+  "before": {
+    "review_records": 4,
+    "appeal_items": 4,
+    "appeals": 4,
+    "evaluation_questions": 3,
+    "retrieval_logs": 32,
+    "evaluation_reports": 31,
+    "agent_runs": 158,
+    "feedback_items": 274,
+    "dimension_scores": 65,
+    "evaluations": 31
+  },
+  "after": {
+    "review_records": 0,
+    "appeal_items": 0,
+    "appeals": 0,
+    "evaluation_questions": 0,
+    "retrieval_logs": 0,
+    "evaluation_reports": 0,
+    "agent_runs": 0,
+    "feedback_items": 0,
+    "dimension_scores": 0,
+    "evaluations": 0
+  },
+  "essays_before": 28,
+  "essays_after": 28,
+  "foreign_key_violations": []
+}

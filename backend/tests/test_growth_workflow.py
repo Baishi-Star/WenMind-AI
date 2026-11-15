@@ -20,7 +20,7 @@ def _review_first_evaluation(client, student_headers, teacher_headers, detail):
             "evaluation_id": detail["id"],
             "feedback_item_id": feedback["id"],
             "reason_type": "creative_expression_misjudged",
-            "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "organization", "language", "overall", "topic"} else "overall",
+            "dimension": feedback["dimension"] if feedback["dimension"] in {"content", "expression", "development", "organization", "language", "overall", "topic"} else "overall",
             "description": "教师复核该表述是否被误判，并保留本人表达意图。",
             "evidence": evidence,
         },
@@ -33,9 +33,9 @@ def _review_first_evaluation(client, student_headers, teacher_headers, detail):
             "decision": "adjust",
             "change_reason": "教师确认该表达属于有意设计，调整最终诊断值。",
             "dimension_updates": [
-                {"dimension": "content", "final_score": 5},
-                {"dimension": "organization", "final_score": 4},
-                {"dimension": "language", "final_score": 4},
+                {"dimension": "content", "final_score": 17},
+                {"dimension": "expression", "final_score": 15},
+                {"dimension": "development", "final_score": 15},
             ],
             "feedback_changes": [],
             "added_feedback": [],
@@ -125,7 +125,7 @@ def test_insufficient_samples_are_marked_data_accumulating(client):
     assert len(profile["capabilities"]) == 5
     assert {item["key"] for item in profile["capabilities"] if not item["supported"]} == {"topic", "argumentation"}
     scored_dimensions = {item["key"] for item in profile["capabilities"] if item["supported"]}
-    assert scored_dimensions == {"content", "organization", "language"}
+    assert scored_dimensions == {"content", "expression", "development"}
     assert all(not item["available"] for item in profile["capabilities"] if item["supported"])
     history = client.get("/api/v1/growth/history", headers=headers).json()["data"]
     assert history["points"] == []

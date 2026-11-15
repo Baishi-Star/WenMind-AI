@@ -395,7 +395,7 @@
 
                   <template v-if="reviewForm.decision === 'adjust'">
                     <div class="section-title">
-                      维度最终诊断值（1–5，不计算加权总分）
+                      维度最终得分（0–20）
                     </div>
                     <div class="score-row">
                       <el-form-item
@@ -663,7 +663,7 @@ const reviewForm = reactive({
 
 function statusType(status) { return { pending: 'info', reviewing: 'warning', accepted: 'success', rejected: 'danger', resolved: 'success' }[status] || 'info' }
 function statusLabel(status) { return { pending: '待复核', reviewing: '复核中', accepted: '已接受', rejected: '已驳回', resolved: '已处理' }[status] || status }
-function dimensionLabel(value) { return { content: '内容', organization: '组织结构', language: '语言', overall: '整体', topic: '审题' }[value] || value }
+function dimensionLabel(value) { return { content: '内容', expression: '表达', development: '发展', organization: '组织结构（旧）', language: '语言（旧）', overall: '整体', topic: '审题' }[value] || value }
 function reasonLabel(value) { return reasonOptions.find((item) => item.value === value)?.label || value }
 
 async function loadAppeals() {
@@ -749,7 +749,7 @@ function initializeReviewForm() {
   reviewForm.decision = 'adjust'
   reviewForm.dimension_scores = {}
   detail.value.evaluation.dimension_scores.forEach((item) => {
-    reviewForm.dimension_scores[item.dimension] = item.final_score ?? item.original_score ?? 3
+    reviewForm.dimension_scores[item.dimension] = item.final_score ?? item.original_score ?? 12
   })
   reviewForm.feedback_changes = {}
   detail.value.feedback_items.filter((item) => !item.teacher_feedback).forEach((item) => {

@@ -79,7 +79,7 @@
       >
         <section class="wm-card panel">
           <div class="section-head">
-            <h2>维度能力分布</h2><span>诊断值 1–5 · 薄弱为低于 3.5</span>
+            <h2>维度能力分布</h2><span>维度得分 0–20 · 薄弱为低于 14</span>
           </div>
           <div
             v-for="dimension in dimensions"
@@ -88,7 +88,7 @@
           >
             <div class="dimension-row__head">
               <span>{{ dimension.label }}</span>
-              <strong>{{ analytics.dimension_averages[dimension.key] ?? '—' }}<small>/5</small></strong>
+              <strong>{{ analytics.dimension_averages[dimension.key] ?? '—' }}<small>/20</small></strong>
             </div>
             <div class="dimension-row__meta">
               <span>薄弱比例 <strong>{{ analytics.dimension_weak_ratios[dimension.key] ?? 0 }}%</strong></span>
@@ -289,11 +289,11 @@ const classesLoading = ref(false)
 
 const dimensions = [
   { key: 'content', label: '内容能力' },
-  { key: 'organization', label: '结构能力' },
-  { key: 'language', label: '语言能力' },
+  { key: 'expression', label: '表达能力' },
+  { key: 'development', label: '发展能力' },
 ]
 
-function dimensionLabel(value) { return { content: '内容', organization: '结构', language: '语言', overall: '整体', topic: '审题' }[value] || value }
+function dimensionLabel(value) { return { content: '内容', expression: '表达', development: '发展', organization: '结构（旧）', language: '语言（旧）', overall: '整体', topic: '审题' }[value] || value }
 function statusLabel(status) { return { pending: '待复核', reviewing: '复核中', accepted: '已接受', rejected: '已驳回', resolved: '已处理' }[status] || status }
 function distributionWidth(dimension, bucket) {
   const distribution = analytics.value?.dimension_distribution?.[dimension]

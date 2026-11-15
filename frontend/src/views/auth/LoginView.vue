@@ -167,7 +167,7 @@
 
     <footer class="login-footer">
       <span><el-icon><Lock /></el-icon> 密钥不进入前端，账号权限由后端校验</span>
-      <span>AI 评价仅作教学诊断参考，不等同于正式考试评分</span>
+      <span>AI 评价按全国卷 60 分制量规生成原始分，最终以教师复核为准</span>
     </footer>
   </div>
 </template>

@@ -12,6 +12,7 @@ from app.models.base import EssayStatus, UserRole
 from app.models.essay import Essay, EssayPrompt
 from app.models.rubric import RubricVersion
 from app.models.user import ClassRoom, Enrollment, User
+from app.models.writing_task import WritingTask
 
 logger = get_logger(__name__)
 
@@ -29,6 +30,93 @@ ESSAY_CONTENTS = [
     "技术的发展不断拓展人的能力，也重新提醒我们思考人的位置。当算法可以生成文章、安排路线甚至替人作出选择时，便利确实增加了，但便利并不天然等于进步。如果所有决定都交给系统，人可能在轻松中逐渐失去理解世界和承担责任的机会。\n当然，拒绝技术并不是答案。真正重要的是明确工具的边界：让机器处理重复劳动，让人保留价值判断；让数据提供参考，让最终决定能够被人解释。技术的意义应当是让人的创造更有空间，而不是让人变成流程中被动的一环。\n面对未来，我们需要的不是对机器的盲目崇拜，也不是无端恐惧，而是清醒的主体意识。只有知道为什么使用技术、准备用它实现什么，技术才会成为延伸能力的工具，而不是替代思考的理由。",
     "成长常被理解为不断获得正确答案，但真正的成长也往往包含承认不确定。一次作文评价给出的分数，可以帮助我们发现问题，却不能概括一个写作者的全部可能。如果只因分数不理想便否定自己，评价就从诊断工具变成了束缚。\n更有价值的做法，是追问评价背后的依据：观点是否清晰，论据是否真正支撑观点，段落之间是否形成递进。把抽象分数转化为具体行动，我们才知道下一次应该修改什么。\n同时，评价也需要被质疑。读者可能误解作者的表达，标准也可能忽略有个性的写法。提出异议并说明理由，不是拒绝批评，而是参与对作品的理解。写作因此不再只是等待判定，而成为作者、读者与标准之间持续对话的过程。",
 ]
+
+
+GRADING_RUBRIC_NAME = "全国卷高考作文评分量规（内容 / 表达 / 发展）"
+GRADING_RUBRIC_VERSION = "v2.0"
+GRADING_RUBRIC_MAX_SCORE = 60
+GRADING_DIMENSIONS = [
+    {
+        "dimension": "content",
+        "name": "内容",
+        "max_score": 20,
+        "description": "审题立意、中心与材料、思想情感；一等 20-17，二等 16-12，三等 11-7，四等 6-0。",
+    },
+    {
+        "dimension": "expression",
+        "name": "表达",
+        "max_score": 20,
+        "description": "结构完整度与条理逻辑、语言规范通顺、文采与表达、文体语言；一等 20-17，二等 16-12，三等 11-7，四等 6-0。",
+    },
+    {
+        "dimension": "development",
+        "name": "发展",
+        "max_score": 20,
+        "description": "发展等级特征：深刻、丰富、有文采、有创意；一等 20-17，二等 16-12，三等 11-7，四等 6-0。",
+    },
+]
+
+
+def grading_dimensions_json() -> str:
+    return json.dumps(
+        {
+            "total_max_score": GRADING_RUBRIC_MAX_SCORE,
+            "standard": "全国卷高考作文评分标准（内容 20 + 表达 20 + 发展 20）",
+            "dimensions": GRADING_DIMENSIONS,
+            "grade_bands": {"一等": "20-17", "二等": "16-12", "三等": "11-7", "四等": "6-0"},
+            "total_bands": {"一类": "54-60", "二类": "45-53", "三类": "36-44", "四类": "0-35"},
+            "development_features": ["深刻", "丰富", "有文采", "有创意"],
+            "deductions": {
+                "no_title": 2,
+                "typo_per_char": 1,
+                "typo_max": 5,
+                "short_essay_per_50_chars": 1,
+                "word_floor": 800,
+            },
+            "synthesis": "总分 = 内容 + 表达 + 发展 - 扣分，取 0-60 整数；字数不足由后端自动计算，无标题与错别字交由教师复核。",
+            "notice": "量化区间为项目采纳的建议口径，非官方阅卷细则；AI 原始分与教师最终分双轨保存。",
+        },
+        ensure_ascii=False,
+    )
+
+
+def ensure_grading_rubric(db: Session) -> RubricVersion:
+    """幂等确保全国卷 60 分量规存在并发布，并将题目/写作任务统一迁移到该量规。"""
+    rubric = db.scalar(
+        select(RubricVersion).where(
+            RubricVersion.name == GRADING_RUBRIC_NAME,
+            RubricVersion.version == GRADING_RUBRIC_VERSION,
+        )
+    )
+    if rubric is None:
+        rubric = RubricVersion(
+            name=GRADING_RUBRIC_NAME,
+            version=GRADING_RUBRIC_VERSION,
+            dimensions_json=grading_dimensions_json(),
+            status="published",
+            change_reason="切换为全国卷三维 60 分制：内容 20 + 表达 20 + 发展 20；量化区间为项目采纳建议口径。",
+            is_demo=False,
+        )
+        db.add(rubric)
+        db.flush()
+        logger.info("已创建全国卷 60 分量规：%s %s", GRADING_RUBRIC_NAME, GRADING_RUBRIC_VERSION)
+    else:
+        rubric.dimensions_json = grading_dimensions_json()
+        if rubric.status != "published":
+            rubric.status = "published"
+    migrated = 0
+    for prompt in db.scalars(select(EssayPrompt)).all():
+        if prompt.rubric_version_id != rubric.id:
+            prompt.rubric_version_id = rubric.id
+            migrated += 1
+    for task in db.scalars(select(WritingTask)).all():
+        if task.rubric_version_id != rubric.id:
+            task.rubric_version_id = rubric.id
+            migrated += 1
+    db.commit()
+    if migrated:
+        logger.info("已将 %s 个题目/写作任务迁移到量规 v2.0", migrated)
+    return rubric
 
 
 def seed_demo_data(db: Session) -> bool:
@@ -55,17 +143,12 @@ def seed_demo_data(db: Session) -> bool:
     db.flush()
     db.add_all([Enrollment(class_id=classroom.id, student_id=student.id) for student in students])
 
-    dimensions = [
-        {"dimension": "content", "name": "内容", "max_score": 20, "description": "审题切题、立意、观点、论据与分析"},
-        {"dimension": "organization", "name": "组织", "max_score": 20, "description": "段落功能、论证顺序、逻辑连贯与衔接"},
-        {"dimension": "language", "name": "语言", "max_score": 20, "description": "表达准确、流畅、句式与语言规范"},
-    ]
     rubric = RubricVersion(
-        name="高中议论文诊断性评价量规（演示）",
-        version="v1.0",
-        dimensions_json=json.dumps({"total_max_score": 60, "dimensions": dimensions}, ensure_ascii=False),
+        name=GRADING_RUBRIC_NAME,
+        version=GRADING_RUBRIC_VERSION,
+        dimensions_json=grading_dimensions_json(),
         status="published",
-        change_reason="初赛演示初始量规；仅用于教学诊断，不等同于高考正式阅卷标准",
+        change_reason="全国卷三维 60 分制量规（内容 20 + 表达 20 + 发展 20），量化区间为项目采纳建议口径。",
         is_demo=True,
         created_by=admin.id,
     )

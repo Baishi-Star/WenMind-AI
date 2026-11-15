@@ -20,12 +20,12 @@ from app.schemas.agent import AgentResult
 from app.services.knowledge_service import search_knowledge
 
 logger = get_logger(__name__)
-DIAGNOSTIC_NOTICE = "AI 评价属于教学诊断性参考；1-5 仅为诊断等级，不计算加权总分，不等同于正式考试评分。"
+DIAGNOSTIC_NOTICE = "本评价按全国卷三维 60 分制量规生成：内容 20 + 表达 20 + 发展 20，扣除字数不足分；AI 原始分与教师复核分双轨保存，最终以教师复核为准。"
 AGENT_SEQUENCE = [
     ("topic_agent", "分析作文审题、核心任务回应和立意", None),
-    ("content_agent", "评价内容、论据和论证深度", "content"),
-    ("structure_agent", "评价结构、段落和论证逻辑", "organization"),
-    ("language_agent", "评价语言规范、准确性和表现力", "language"),
+    ("content_agent", "评价内容：审题立意、中心与材料、思想情感", "content"),
+    ("expression_agent", "评价表达：结构条理、语言规范、文采与文体", "expression"),
+    ("development_agent", "评价发展等级：深刻、丰富、有文采、有创意", "development"),
 ]
 
 
@@ -70,7 +70,7 @@ class EvaluationOrchestrator:
                 "requirements": prompt.requirements if prompt else "未提供额外写作要求",
                 "content": essay.content,
                 "rubric": json.loads(rubric.dimensions_json) if rubric else None,
-                "diagnostic_rule": "仅输出 1-5 诊断等级，不输出正式总分",
+                "diagnostic_rule": "按全国卷三维给 0-20 整数维度分并标注等第；总分由后端按量规合成",
             }
             knowledge_context = [item.model_dump() for item in knowledge.results]
             previous: list[AgentResult] = []
@@ -93,11 +93,12 @@ class EvaluationOrchestrator:
             scored_dimensions = {
                 result.dimension
                 for result in previous
-                if result.dimension in {"content", "organization", "language"} and result.diagnostic_score is not None
+                if result.dimension in {"content", "expression", "development"} and result.diagnostic_score is not None
             }
-            missing_dimensions = {"content", "organization", "language"} - scored_dimensions
+            missing_dimensions = {"content", "expression", "development"} - scored_dimensions
             if missing_dimensions:
-                raise AppError(f"评价结果缺少维度诊断值：{', '.join(sorted(missing_dimensions))}")
+                raise AppError(f"评价结果缺少维度得分：{', '.join(sorted(missing_dimensions))}")
+            evaluation.original_total_score = self._compose_total_score(essay, previous)
             self._save_results(evaluation, report, previous, feedback, quality)
             evaluation.status = EvaluationStatus.COMPLETED
             evaluation.error_message = None
@@ -206,15 +207,27 @@ class EvaluationOrchestrator:
                 if evidence.verified_status != "verified":
                     issues.append(f"{result.agent_name} 存在待核验证据：{evidence.match_type or 'pending'}")
             if result.diagnostic_score is not None:
-                if result.diagnostic_score <= 2 and not result.problems:
-                    issues.append(f"{result.agent_name} 诊断值较低但缺少问题说明")
-                if result.diagnostic_score >= 4 and not result.strengths:
-                    issues.append(f"{result.agent_name} 诊断值较高但缺少优点依据")
+                if result.diagnostic_score <= 8 and not result.problems:
+                    issues.append(f"{result.agent_name} 维度得分较低但缺少问题说明")
+                if result.diagnostic_score >= 16 and not result.strengths:
+                    issues.append(f"{result.agent_name} 维度得分较高但缺少优点依据")
         if self.client.execution_mode == "mock" and "当前为 Mock 流程演示，未执行真实模型语义审核" not in issues:
             issues.append("当前为 Mock 流程演示，未执行真实模型语义审核")
         quality.quality_issues = list(dict.fromkeys(issues))
         quality.quality_status = "needs_review" if quality.quality_issues else (quality.quality_status or "passed")
         return quality
+
+    def _compose_total_score(self, essay: Essay, results: list[AgentResult]) -> float:
+        """按全国卷量规合成 60 分制原始总分：三维之和减去字数不足扣分。"""
+        dimension_scores = {
+            item.dimension: item.diagnostic_score
+            for item in results
+            if item.dimension in {"content", "expression", "development"} and item.diagnostic_score is not None
+        }
+        base_total = sum(dimension_scores.get(dim, 0) for dim in ("content", "expression", "development"))
+        word_count = essay.char_count or len(essay.content or "")
+        deduction = max(0, 800 - word_count) // 50
+        return float(max(0, min(60, base_total - deduction)))
 
     def _save_results(
         self,
@@ -234,7 +247,7 @@ class EvaluationOrchestrator:
                         dimension=result.dimension,
                         original_score=result.diagnostic_score,
                         final_score=None,
-                        max_score=5,
+                        max_score=20,
                     )
                 )
             if result.agent_name == "quality_agent":
@@ -269,7 +282,8 @@ class EvaluationOrchestrator:
                 "execution_mode": self.client.execution_mode,
                 "rubric_version_id": evaluation.rubric_version_id,
                 "agents": [item.model_dump() for item in results],
-                "formal_total_score": None,
+                "total_score": evaluation.original_total_score,
+                "total_max_score": 60,
             }
         )
 

@@ -1,0 +1,15 @@
+[
+  {
+    "index": 1,
+    "image": "mmexport1794135061713.jpg",
+    "status": "failed",
+    "upload_http": 201,
+    "image_token": "data/uploads/essays/8bdafff69c8a4c8882f46ad2e50d4b13.png",
+    "ocr_status": "parsed",
+    "essay_id": 29,
+    "evaluation_id": 1,
+    "score": null,
+    "dimensions": [],
+    "error_message": "Agent 输出未通过结构化校验：content_agent 必须返回 0-20 的 diagnostic_score"
+  }
+]

@@ -406,7 +406,7 @@ const approveForm = reactive({
 })
 
 function tagLabel(code) { return { factual_error: '事实性错误', scoring_bias: '评分偏差', expression_misjudgment: '表达误判', evaluation_omission: '评价遗漏', unreasonable_suggestion: '建议不合理', other: '其他' }[code] || code }
-function dimensionLabel(value) { return { content: '内容', organization: '组织结构', language: '语言', overall: '整体', topic: '审题' }[value] || value || '—' }
+function dimensionLabel(value) { return { content: '内容', expression: '表达', development: '发展', organization: '组织结构（旧）', language: '语言（旧）', overall: '整体', topic: '审题' }[value] || value || '—' }
 function proposalStatusType(status) { return { proposed: 'warning', reviewing: 'warning', approved: 'primary', testing: 'warning', published: 'success', rejected: 'danger', archived: 'info' }[status] || 'info' }
 function proposalStatusLabel(status) { return { proposed: '待审核', reviewing: '审核中', approved: '已通过', testing: '测试中', published: '已发布', rejected: '已驳回', archived: '已归档' }[status] || status }
 function versionStatusType(status) { return { published: 'success', testing: 'warning', archived: 'info', draft: 'info' }[status] || 'info' }

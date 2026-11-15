@@ -30,14 +30,14 @@ class AgentResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     agent_name: str
-    task: str
-    analysis: str
+    task: str = ""
+    analysis: str = ""
     evidence: list[EvidenceItem] = Field(default_factory=list)
     suggestions: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0, le=1)
     status: Literal["completed", "failed"] = "completed"
     dimension: str | None = None
-    diagnostic_score: int | None = Field(default=None, ge=1, le=5)
+    diagnostic_score: int | None = Field(default=None, ge=0, le=20)
     grade: str | None = None
     strengths: list[str] = Field(default_factory=list)
     problems: list[str] = Field(default_factory=list)
@@ -62,6 +62,8 @@ class AgentResult(BaseModel):
         if isinstance(value, dict):
             expected_dimension = {
                 "content_agent": "content",
+                "expression_agent": "expression",
+                "development_agent": "development",
                 "structure_agent": "organization",
                 "language_agent": "language",
             }.get(info.data.get("agent_name"))

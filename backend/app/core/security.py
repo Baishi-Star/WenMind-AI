@@ -38,6 +38,15 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 
+def needs_rehash(stored_hash: str) -> bool:
+    """已存哈希的迭代数低于当前配置时，应在登录成功后升级。"""
+    try:
+        algorithm, iterations_text, _, _ = stored_hash.split("$", 3)
+        return algorithm == "pbkdf2_sha256" and int(iterations_text) < settings.password_hash_iterations
+    except (ValueError, TypeError):
+        return False
+
+
 def _jwt_secret() -> str:
     if settings.jwt_secret_key:
         return settings.jwt_secret_key

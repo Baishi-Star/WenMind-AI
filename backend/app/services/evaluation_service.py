@@ -23,7 +23,7 @@ from app.schemas.interaction import FeedbackItemResponse
 from app.services.access_service import accessible_student_ids
 from app.services.essay_service import get_essay_entity
 
-DEFAULT_PROMPT_VERSION = "agent-prompt-v1.0"
+DEFAULT_PROMPT_VERSION = "agent-prompt-v2.0"
 ACTIVE_STATUSES = (EvaluationStatus.PENDING, EvaluationStatus.PROCESSING)
 
 

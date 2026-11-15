@@ -70,8 +70,8 @@ class TeacherAppealDetail(BaseModel):
 
 
 class DimensionUpdate(BaseModel):
-    dimension: Literal["content", "organization", "language"]
-    final_score: int = Field(ge=1, le=5)
+    dimension: Literal["content", "expression", "development", "organization", "language"]
+    final_score: int = Field(ge=0, le=20)
 
 
 class FeedbackChange(BaseModel):
@@ -89,7 +89,7 @@ class FeedbackChange(BaseModel):
 
 
 class AddedFeedback(BaseModel):
-    dimension: Literal["content", "organization", "language", "overall", "topic"]
+    dimension: Literal["content", "expression", "development", "organization", "language", "overall", "topic"]
     content: str = Field(min_length=2, max_length=2000)
     suggestion: str | None = Field(default=None, max_length=2000)
 

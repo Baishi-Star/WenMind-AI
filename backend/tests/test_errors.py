@@ -71,7 +71,7 @@ def test_agent_output_schema_rejects_invalid_json_and_missing_fields():
             "agent_name": "content_agent",
             "task": "内容评价",
             "analysis": "分析",
-            "diagnostic_score": {"content": 3, "organization": 3, "language": 4},
+            "diagnostic_score": {"content": 3, "expression": 3, "development": 4},
         }
     )
     assert content_score.diagnostic_score == 3
@@ -80,7 +80,7 @@ def test_agent_output_schema_rejects_invalid_json_and_missing_fields():
             "agent_name": "topic_agent",
             "task": "审题",
             "analysis": "分析",
-            "diagnostic_score": {"content": 3, "organization": 3, "language": 4},
+            "diagnostic_score": {"content": 3, "expression": 3, "development": 4},
         }
     )
     assert topic_score.diagnostic_score is None

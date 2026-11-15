@@ -46,7 +46,7 @@
         class="task-error"
       />
       <p class="diagnostic-notice">
-        {{ evaluation.diagnostic_notice }} 当前仅使用 1–5 诊断等级，不计算加权总分。
+        {{ evaluation.diagnostic_notice }}
       </p>
     </section>
 
@@ -103,10 +103,10 @@
                 {{ run.output.analysis }}
               </p>
               <div
-                v-if="run.output.diagnostic_score"
+                v-if="run.output.diagnostic_score !== null && run.output.diagnostic_score !== undefined"
                 class="diagnostic-score"
               >
-                诊断等级 <strong>{{ run.output.diagnostic_score }}/5</strong><span>非正式分数</span>
+                维度得分 <strong>{{ run.output.diagnostic_score }}/20</strong><span v-if="run.output.grade">{{ run.output.grade }}</span>
               </div>
               <div
                 v-if="run.output.evidence?.length"
@@ -206,6 +206,14 @@
           {{ qualityLabel }}
         </el-tag>
       </div>
+      <div
+        v-if="evaluation.original_total_score !== null && evaluation.original_total_score !== undefined"
+        class="total-score"
+      >
+        <span>全国卷 60 分制 · AI 原始总分</span>
+        <strong>{{ evaluation.original_total_score }}<small>/60</small></strong>
+        <em v-if="evaluation.final_total_score !== null && evaluation.final_total_score !== undefined">教师最终总分 {{ evaluation.final_total_score }}/60</em>
+      </div>
       <div class="dimension-grid">
         <div
           v-for="item in evaluation.dimension_scores"
@@ -214,7 +222,7 @@
         >
           <span>{{ dimensionLabel(item.dimension) }}</span>
           <strong>{{ item.original_score ?? '—' }}<small>/ {{ item.max_score }}</small></strong>
-          <p>AI 原始诊断值 · 教师最终值 {{ item.final_score ?? '未复核' }}</p>
+          <p>AI 维度得分 · 教师最终得分 {{ item.final_score ?? '未复核' }}</p>
         </div>
       </div>
       <p class="overall-summary">
@@ -249,7 +257,7 @@
         </ul>
       </div>
       <p class="final-note">
-        AI 原始诊断与教师最终复核分字段保存；当前无教师复核时 final_score 为空，不覆盖 AI 原始记录。
+        AI 维度得分（原始分）与教师最终复核分字段保存；当前无教师复核时 final_score 为空，不覆盖 AI 原始记录。
       </p>
     </section>
 
@@ -287,8 +295,10 @@ function forwardAppeal(item) {
 const agentNames = {
   topic_agent: '审题分析 Agent',
   content_agent: '内容评价 Agent',
-  structure_agent: '结构评价 Agent',
-  language_agent: '语言评价 Agent',
+  expression_agent: '表达评价 Agent',
+  development_agent: '发展评价 Agent',
+  structure_agent: '结构评价 Agent（旧）',
+  language_agent: '语言评价 Agent（旧）',
   feedback_agent: '综合反馈 Agent',
   quality_agent: '评价质量审核 Agent',
 }
@@ -300,7 +310,7 @@ const qualityLabel = computed(() => ({ passed: '审核通过', needs_review: '�
 function agentLabel(name) { return agentNames[name] || name }
 function statusType(status) { return { completed: 'success', failed: 'danger', processing: 'warning', pending: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '已完成', failed: '失败', processing: '执行中', pending: '待处理' }[status] || status }
-function dimensionLabel(dimension) { return { content: '内容', organization: '组织（结构）', language: '语言' }[dimension] || dimension }
+function dimensionLabel(dimension) { return { content: '内容', expression: '表达', development: '发展', organization: '组织（旧）', language: '语言（旧）' }[dimension] || dimension }
 </script>
 
 <style scoped>
@@ -344,6 +354,11 @@ function dimensionLabel(dimension) { return { content: '内容', organization: '
 .knowledge-item > div { display: flex; align-items: center; gap: 10px; }
 .knowledge-item small { display: block; margin-top: 6px; color: var(--wm-text-secondary); }
 .knowledge-item p { margin: 8px 0 0; max-height: 150px; overflow: auto; white-space: pre-wrap; color: var(--wm-text-secondary); font-size: 12px; line-height: 1.8; }
+.total-score { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; padding: 16px; border-radius: 12px; background: linear-gradient(135deg, var(--wm-primary-soft), var(--wm-bg-soft)); }
+.total-score span { color: var(--wm-text-secondary); font-size: 12px; }
+.total-score strong { color: var(--wm-primary); font-size: 34px; }
+.total-score strong small { font-size: 14px; }
+.total-score em { color: var(--wm-text-secondary); font-size: 12px; font-style: normal; }
 .dimension-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .dimension-card { padding: 14px; border-radius: 12px; background: var(--wm-bg-soft); }
 .dimension-card > span { color: var(--wm-text-secondary); font-size: 12px; }

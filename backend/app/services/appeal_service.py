@@ -83,7 +83,7 @@ def create_appeal(db: Session, user: User, payload: AppealCreate) -> AppealRespo
         raise ConflictError("评价完成后才能提交申诉")
     if payload.reason_type not in ALLOWED_REASONS:
         raise AppError("申诉原因不在允许范围内")
-    if payload.dimension not in {"content", "organization", "language", "overall", "topic"}:
+    if payload.dimension not in {"content", "expression", "development", "organization", "language", "overall", "topic"}:
         raise AppError("争议维度不正确")
     active = db.scalar(
         select(Appeal.id).where(
