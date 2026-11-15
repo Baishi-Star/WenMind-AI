@@ -3,6 +3,7 @@ import {
   Collection,
   Connection,
   DataAnalysis,
+  Document,
   DocumentChecked,
   Files,
   FolderOpened,
@@ -46,6 +47,7 @@ export const ROLES = {
 export const NAVIGATIONS = {
   student: [
     { path: '/student/dashboard', title: '学生首页', icon: Odometer, group: '学习概览' },
+    { path: '/student/tasks', title: '写作任务', icon: Files, group: '写作与评价' },
     { path: '/student/essays', title: '我的作文', icon: Files, group: '写作与评价' },
     { path: '/student/evaluations', title: 'AI 评价结果', icon: DocumentChecked, group: '写作与评价' },
     { path: '/student/appeals', title: '我的申诉', icon: ChatLineSquare, group: '反馈与成长' },
@@ -53,6 +55,7 @@ export const NAVIGATIONS = {
   ],
   teacher: [
     { path: '/teacher/dashboard', title: '教师工作台', icon: Odometer, group: '教学概览' },
+    { path: '/teacher/assignments', title: '作文任务', icon: Document, group: '教学管理' },
     { path: '/teacher/reviews', title: '评价复核', icon: DocumentChecked, group: '评价与复核' },
     { path: '/teacher/appeals', title: '申诉管理', icon: ChatLineSquare, group: '评价与复核' },
     { path: '/teacher/analytics', title: '班级学情分析', icon: Histogram, group: '分析与改进' },

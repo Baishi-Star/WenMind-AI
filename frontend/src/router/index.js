@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const studentRoutes = [
   { path: 'dashboard', name: 'student-dashboard', title: '学生首页', component: () => import('@/views/student/DashboardView.vue') },
-  { path: 'tasks', redirect: '/student/essays', title: '写作任务' },
+  { path: 'tasks', name: 'student-tasks', title: '写作任务', component: () => import('@/views/student/TaskListView.vue') },
   { path: 'essays', name: 'student-essays', title: '我的作文', component: () => import('@/views/student/EssayCenterView.vue') },
   { path: 'essays/new', name: 'student-essay-new', title: '作文提交', component: () => import('@/views/student/EssaySubmitView.vue') },
   { path: 'evaluations', name: 'student-evaluations', title: 'AI 评价结果', component: () => import('@/views/student/EvaluationDetailView.vue') },
@@ -20,7 +20,7 @@ const studentRoutes = [
 const teacherRoutes = [
   { path: 'dashboard', name: 'teacher-dashboard', title: '教师工作台', component: () => import('@/views/teacher/DashboardView.vue') },
   { path: 'classes', redirect: '/teacher/dashboard', title: '班级管理' },
-  { path: 'assignments', redirect: '/teacher/reviews', title: '作文任务' },
+  { path: 'assignments', name: 'teacher-assignments', title: '作文任务', component: () => import('@/views/teacher/EssayAssignmentsView.vue') },
   { path: 'reviews', name: 'teacher-reviews', title: '评价复核', component: () => import('@/views/teacher/EvaluationReviewView.vue') },
   { path: 'appeals', name: 'teacher-appeals', title: '申诉管理', component: () => import('@/views/teacher/AppealManagementView.vue') },
   { path: 'analytics', name: 'teacher-analytics', title: '班级学情分析', component: () => import('@/views/teacher/ClassAnalyticsView.vue') },
