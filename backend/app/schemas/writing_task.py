@@ -38,7 +38,7 @@ class TaskTargetResponse(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    title: str = Field(min_length=2, max_length=200)
+    title: str = Field(default="", max_length=200)
     prompt_text: str = Field(min_length=2, max_length=4000)
     requirements: str = Field(default="", max_length=4000)
     rubric_version_id: int | None = Field(default=None, gt=0)
@@ -60,7 +60,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=2, max_length=200)
+    title: str | None = Field(default=None, max_length=200)
     prompt_text: str | None = Field(default=None, min_length=2, max_length=4000)
     requirements: str | None = Field(default=None, max_length=4000)
     rubric_version_id: int | None = Field(default=None, gt=0)
@@ -139,6 +139,16 @@ class SubmissionCreate(BaseModel):
 
 class ImageSubmissionCreate(BaseModel):
     task_id: int = Field(gt=0)
+
+
+class TeacherTaskSubmissionItem(BaseModel):
+    id: int
+    student_id: int
+    student_name: str
+    input_mode: str
+    status: str
+    submitted_at: datetime | None
+    answer_count: int
 
 
 class SubmissionAnswerResponse(BaseModel):

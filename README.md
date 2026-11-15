@@ -365,6 +365,17 @@ npm run test:e2e
 `test:e2e` 使用本机 Chrome/Edge 验证三角色登录退出、28 个角色路由、空白页和控制台错误，
 可通过 `E2E_CHROME`、`E2E_BASE_URL`、`E2E_DEMO_PASSWORD` 覆盖默认环境。
 
+```bash
+# 写作任务链路自检：教师建任务→发布→学生可见→学生提交→教师看到提交
+cd backend
+./.venv/Scripts/python.exe scripts/verify_task_flow.py          # 跑完自动清理本次任务与提交
+./.venv/Scripts/python.exe scripts/verify_task_flow.py --keep   # 保留验收数据
+```
+
+脚本需后端已在 `127.0.0.1:8000` 运行；演示密码取 `backend/.env` 的 `DEMO_PASSWORD`（缺省 `Demo@2026`）。
+每一步输出 `PASS/FAIL` 与关键字段，任一步失败会打印后端返回体的 `HTTP 状态码 / code / message`
+并在末尾输出 `SUMMARY`；默认清理本次创建的任务、提交与关联作文。
+
 ## 八、环境变量与安全约定
 
 - 后端密钥只写入 `backend/.env`，该文件已被 `.gitignore` 忽略，**禁止提交真实密钥**。

@@ -9,7 +9,7 @@ from app.core.exceptions import AppError, ConflictError, NotFoundError, Permissi
 from app.models.base import UserRole, utc_now
 from app.models.essay import EssayPrompt
 from app.models.rubric import RubricVersion
-from app.models.submission import Submission
+from app.models.submission import Submission, SubmissionAnswer
 from app.models.user import ClassRoom, Enrollment, User
 from app.models.writing_task import TaskQuestion, TaskSource, TaskStatus, TaskTarget, TargetType, WritingTask
 from app.schemas.writing_task import (
@@ -18,6 +18,7 @@ from app.schemas.writing_task import (
     TaskResponse,
     TaskTargetResponse,
     TaskUpdate,
+    TeacherTaskSubmissionItem,
 )
 from app.services.access_service import accessible_student_ids, assert_class_access, assert_student_access
 
@@ -211,7 +212,7 @@ def create_task(db: Session, user: User, payload: TaskCreate) -> TaskResponse:
     _validate_rubric(db, payload.rubric_version_id)
     prompt_id = _resolve_task_prompt(db, user, payload.prompt_text, payload.requirements, payload.rubric_version_id)
     task = WritingTask(
-        title=payload.title.strip(),
+        title=payload.title.strip() or payload.prompt_text.strip()[:60],
         source_type=TaskSource.TEACHER,
         prompt_text=payload.prompt_text.strip(),
         requirements=payload.requirements.strip(),
@@ -244,7 +245,7 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
     if submissions and payload.questions is not None:
         raise ConflictError("已有学生提交，不能再修改子问题结构")
     if payload.title is not None:
-        task.title = payload.title.strip()
+        task.title = payload.title.strip() or task.prompt_text.strip()[:60]
     if payload.prompt_text is not None:
         task.prompt_text = payload.prompt_text.strip()
     if payload.requirements is not None:
@@ -275,6 +276,31 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
     db.commit()
     db.refresh(task)
     return serialize_task(db, task)
+
+
+def list_task_submissions(db: Session, user: User, task_id: int) -> list[TeacherTaskSubmissionItem]:
+    """教师查看某任务下的学生提交（只读汇总，不暴露答案正文）。"""
+    task = get_task_entity(db, user, task_id)
+    rows = db.execute(
+        select(Submission, User.display_name, func.count(SubmissionAnswer.id))
+        .join(User, Submission.student_id == User.id)
+        .outerjoin(SubmissionAnswer, SubmissionAnswer.submission_id == Submission.id)
+        .where(Submission.task_id == task.id)
+        .group_by(Submission.id, User.display_name)
+        .order_by(Submission.id)
+    ).all()
+    return [
+        TeacherTaskSubmissionItem(
+            id=submission.id,
+            student_id=submission.student_id,
+            student_name=student_name,
+            input_mode=submission.input_mode,
+            status=submission.status,
+            submitted_at=submission.submitted_at,
+            answer_count=answer_count,
+        )
+        for submission, student_name, answer_count in rows
+    ]
 
 
 def publish_task(db: Session, user: User, task_id: int) -> TaskResponse:

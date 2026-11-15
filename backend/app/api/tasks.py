@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.models.base import UserRole
 from app.models.user import User
 from app.schemas.common import ApiResponse, success
-from app.schemas.writing_task import TaskCreate, TaskResponse, TaskUpdate
+from app.schemas.writing_task import TaskCreate, TaskResponse, TaskUpdate, TeacherTaskSubmissionItem
 from app.services import writing_task_service
 
 router = APIRouter(prefix="/teacher", tags=["teacher-tasks"])
@@ -39,6 +39,15 @@ def get_task(
     current_user: User = Depends(teacher_only),
 ) -> ApiResponse[TaskResponse]:
     return success(writing_task_service.get_task_detail(db, current_user, task_id))
+
+
+@router.get("/tasks/{task_id}/submissions", response_model=ApiResponse[list[TeacherTaskSubmissionItem]])
+def get_task_submissions(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(teacher_only),
+) -> ApiResponse[list[TeacherTaskSubmissionItem]]:
+    return success(writing_task_service.list_task_submissions(db, current_user, task_id))
 
 
 @router.put("/tasks/{task_id}", response_model=ApiResponse[TaskResponse])
