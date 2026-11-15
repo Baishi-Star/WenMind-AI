@@ -83,3 +83,46 @@ def recognize(image_path: Path, mime_type: str) -> str:
         logger.warning("图片识别返回空文本")
         raise OcrFailure("empty text")
     return text
+
+_END_PUNCTUATIONS = ("。", "！", "？", "；", "，", "、", "…", ".", "!", "?", ";", ",")
+_STRUCTURE_PREFIXES = (
+    "一、", "二、", "三、", "四、", "五、", "六、", "七、", "八、", "九、", "十、",
+    "（一）", "（二）", "（三）", "（四）",
+    "1.", "2.", "3.", "4.", "①", "②", "③", "④",
+    "第", "要求", "写作提示",
+)
+_PAIRED_DECORATIONS = (("《", "》"), ("“", "”"), ("‘", "’"), ("「", "」"), ("【", "】"))
+
+
+def _clean_title(line: str) -> str:
+    text = line.strip()
+    changed = True
+    while changed and text:
+        changed = False
+        for left, right in _PAIRED_DECORATIONS:
+            if text.startswith(left) and text.endswith(right) and len(text) > len(left) + len(right):
+                text = text[len(left) : -len(right)].strip()
+                changed = True
+    return text.lstrip("#").strip()
+
+
+def extract_title_and_body(text: str) -> tuple[str | None, str]:
+    """启发式提取首个非空行为标题；失败时返回 (None, 原文)。"""
+    raw = (text or "").replace("\r\n", "\n").replace("\r", "\n")
+    lines = raw.split("\n")
+    first_index = next((index for index, line in enumerate(lines) if line.strip()), None)
+    if first_index is None:
+        return None, raw
+    candidate = _clean_title(lines[first_index])
+    if not (2 <= len(candidate) <= 40):
+        return None, raw
+    if candidate.endswith(_END_PUNCTUATIONS):
+        return None, raw
+    if any(candidate.startswith(prefix) for prefix in _STRUCTURE_PREFIXES):
+        return None, raw
+    if not candidate.strip("《》“”‘’「」【】# \t"):
+        return None, raw
+    if not any(line.strip() for line in lines[first_index + 1 :]):
+        return None, raw
+    body_lines = lines[:first_index] + lines[first_index + 1 :]
+    return candidate, "\n".join(body_lines).strip("\n")
