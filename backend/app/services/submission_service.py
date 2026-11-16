@@ -173,7 +173,7 @@ def submit_image_submission(db: Session, student: User, submission_id: int) -> S
     if submission.status != SubmissionStatus.READY:
         raise ConflictError("请先完成图片识别并确认文本后再提交")
     task = db.get(WritingTask, submission.task_id)
-    writing_task_service.assert_can_submit(db, student, task)
+    writing_task_service.assert_can_submit(db, student, task, exclude_submission_id=submission.id)
     questions = writing_task_service.ensure_default_question(db, task)
 
     answer = db.scalar(select(SubmissionAnswer).where(SubmissionAnswer.submission_id == submission.id))

@@ -446,7 +446,12 @@ def get_student_task(db: Session, student: User, task_id: int) -> dict:
     }
 
 
-def assert_can_submit(db: Session, student: User, task: WritingTask) -> None:
+def assert_can_submit(
+    db: Session,
+    student: User,
+    task: WritingTask,
+    exclude_submission_id: int | None = None,
+) -> None:
     """提交资格校验：范围、状态、截止时间和重交策略。"""
     if task.status != TaskStatus.PUBLISHED:
         raise ConflictError("任务已关闭，不能再提交")
@@ -456,21 +461,22 @@ def assert_can_submit(db: Session, student: User, task: WritingTask) -> None:
         start = task.start_at if task.start_at.tzinfo else task.start_at.replace(tzinfo=timezone.utc)
         if start > datetime.now(timezone.utc):
             raise ConflictError("任务尚未开始，暂不能提交")
-    existing = db.scalar(
-        select(func.count(Submission.id)).where(
-            Submission.task_id == task.id,
-            Submission.student_id == student.id,
-            Submission.status.in_(
-                (
-                    "submitted",
-                    "evaluating",
-                    "evaluated",
-                    "uploaded",
-                    "needs_confirmation",
-                    "ready",
-                )
-            ),
-        )
-    ) or 0
+    conditions = [
+        Submission.task_id == task.id,
+        Submission.student_id == student.id,
+        Submission.status.in_(
+            (
+                "submitted",
+                "evaluating",
+                "evaluated",
+                "uploaded",
+                "needs_confirmation",
+                "ready",
+            )
+        ),
+    ]
+    if exclude_submission_id is not None:
+        conditions.append(Submission.id != exclude_submission_id)
+    existing = db.scalar(select(func.count(Submission.id)).where(*conditions)) or 0
     if existing and not task.allow_resubmit:
         raise ConflictError("该任务不允许重复提交，如需修改请联系教师")

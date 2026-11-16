@@ -102,9 +102,11 @@
 
     <el-dialog
       v-model="imageVisible"
-      :title="activeTask ? `上传作文照片：${activeTask.title}` : '上传作文照片'"
-      width="860px"
+      :title="imageDialogTitle"
+      width="900px"
       :close-on-click-modal="false"
+      :before-close="handleImageDialogClose"
+      @closed="resetImageFlow"
     >
       <template v-if="activeTask">
         <el-alert
@@ -115,24 +117,204 @@
           :description="activeTask.prompt_text"
           class="submit-notice"
         />
-        <el-alert
-          type="warning"
-          :closable="false"
-          show-icon
-          title="当前阶段说明"
-          description="本步仅完成图片上传、页序与查看。视觉模型识别与批改将在下一步接入；确认前不会进入评价队列。"
-          class="submit-notice"
-        />
-        <ImageUploader
-          v-if="imageSubmissionId"
-          :submission-id="imageSubmissionId"
-          @changed="handleImageChanged"
-        />
+
+        <template v-if="imageStep === 'upload'">
+          <ImageUploader
+            v-if="imageSubmissionId"
+            ref="imageUploaderRef"
+            :submission-id="imageSubmissionId"
+            @changed="handleImageChanged"
+          />
+          <el-alert
+            v-if="imageError"
+            type="error"
+            :closable="false"
+            show-icon
+            :title="imageError"
+            class="submit-error"
+          />
+        </template>
+
+        <template v-else-if="imageStep === 'recognize'">
+          <el-alert
+            type="success"
+            :closable="false"
+            show-icon
+            title="识别完成，请逐页核对并修改识别结果"
+            class="submit-notice"
+          />
+          <el-alert
+            v-if="imageError"
+            type="error"
+            :closable="false"
+            show-icon
+            :title="imageError"
+            class="submit-error"
+          />
+          <div class="page-list">
+            <article
+              v-for="(file, index) in imageFiles"
+              :key="file.id"
+              class="page-card"
+            >
+              <div class="page-card__head">
+                <strong>第 {{ index + 1 }} 页</strong>
+                <el-tag
+                  size="small"
+                  :type="file.extraction_status === 'done' ? 'success' : 'danger'"
+                >
+                  {{ file.extraction_status === 'done' ? '已识别' : '识别失败' }}
+                </el-tag>
+              </div>
+              <div class="page-card__body">
+                <el-image
+                  v-if="imagePreviews[file.id]"
+                  :src="imagePreviews[file.id]"
+                  :preview-src-list="[imagePreviews[file.id]]"
+                  fit="contain"
+                  class="page-thumb"
+                />
+                <div
+                  v-else
+                  class="page-thumb page-thumb--empty"
+                >
+                  图片加载中…
+                </div>
+                <div class="page-editor">
+                  <p
+                    v-if="file.extraction_status !== 'done'"
+                    class="page-warn"
+                  >
+                    该页识别失败，可手动输入
+                  </p>
+                  <el-input
+                    v-model="imageTexts[file.id]"
+                    type="textarea"
+                    :rows="8"
+                    maxlength="20000"
+                    show-word-limit
+                    :placeholder="`请输入第 ${index + 1} 页的作文正文`"
+                  />
+                  <div class="page-meta">
+                    当前 {{ (imageTexts[file.id] || '').trim().length }} 字
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </template>
+
+        <template v-else-if="imageStep === 'confirm'">
+          <div class="confirm-summary">
+            <div>
+              <span>共 {{ imageFiles.length }} 页</span>
+              <span>合计 {{ imageTotalChars }} 字</span>
+            </div>
+            <div>
+              <span>所属任务：{{ activeTask.title }}</span>
+              <span>子问题：{{ activeTask.questions.length }} 道</span>
+            </div>
+          </div>
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+            title="确认后将进入 AI 评价队列，确认前可返回修改"
+            class="submit-notice"
+          />
+          <el-alert
+            v-if="imageError"
+            type="error"
+            :closable="false"
+            show-icon
+            :title="imageError"
+            class="submit-error"
+          />
+        </template>
+
+        <template v-else>
+          <el-result
+            icon="success"
+            title="已提交，正在进入评价队列"
+          />
+          <p
+            v-if="activeTask.questions.length > 1"
+            class="done-hint"
+          >
+            请继续完成其余子题作答。
+          </p>
+        </template>
       </template>
+
       <template #footer>
-        <el-button @click="imageVisible = false">
-          关闭
-        </el-button>
+        <template v-if="imageStep === 'upload'">
+          <el-button
+            :disabled="recognizing"
+            @click="closeImageDialog"
+          >
+            关闭
+          </el-button>
+          <el-button
+            v-if="imageError"
+            :disabled="recognizing"
+            @click="manualEntry"
+          >
+            手动录入
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="imageFileCount === 0"
+            :loading="recognizing"
+            @click="startRecognize"
+          >
+            {{ recognizing ? '正在识别文字，请稍候…' : '下一步：识别文字' }}
+          </el-button>
+        </template>
+        <template v-else-if="imageStep === 'recognize'">
+          <el-button
+            :disabled="recognizing"
+            @click="imageStep = 'upload'"
+          >
+            上一步
+          </el-button>
+          <el-button
+            :disabled="recognizing"
+            :loading="recognizing"
+            @click="startRecognize"
+          >
+            {{ recognizing ? '正在重新识别…' : '重新识别' }}
+          </el-button>
+          <el-button
+            type="primary"
+            :disabled="recognizing"
+            @click="goConfirm"
+          >
+            下一步：确认
+          </el-button>
+        </template>
+        <template v-else-if="imageStep === 'confirm'">
+          <el-button
+            :disabled="confirming"
+            @click="imageStep = 'recognize'"
+          >
+            上一步
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="confirming"
+            @click="confirmAndSubmit"
+          >
+            {{ confirming ? '提交中…' : '确认并提交' }}
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button
+            type="primary"
+            @click="closeImageDialog"
+          >
+            关闭
+          </el-button>
+        </template>
       </template>
     </el-dialog>
 
@@ -212,12 +394,21 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 import PageHeader from '@/components/PageHeader.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
-import { createImageSubmission, createSubmission, fetchStudentTasks } from '@/api/submission'
+import {
+  confirmSubmissionExtraction,
+  createImageSubmission,
+  createSubmission,
+  fetchStudentTasks,
+  fetchSubmissionFiles,
+  loadAuthorizedImage,
+  submitImageSubmission,
+  transcribeSubmission,
+} from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const tasks = ref([])
@@ -230,6 +421,25 @@ const answerMap = reactive({})
 const imageVisible = ref(false)
 const imageSubmissionId = ref(null)
 const imageCreating = ref(false)
+const imageUploaderRef = ref(null)
+const imageStep = ref('upload')
+const imageFiles = ref([])
+const imageTexts = reactive({})
+const imagePreviews = reactive({})
+const imageFileCount = ref(0)
+const imageError = ref('')
+const recognizing = ref(false)
+const confirming = ref(false)
+let imageObjectUrls = []
+
+const imageDialogTitle = computed(() => {
+  if (!activeTask.value) return '上传作文照片'
+  const suffix = { upload: '上传作文照片', recognize: '识别与校对', confirm: '确认提交', done: '提交完成' }[imageStep.value] || ''
+  return `${suffix}：${activeTask.value.title}`
+})
+const imageTotalChars = computed(() =>
+  imageFiles.value.reduce((total, file) => total + (imageTexts[file.id] || '').trim().length, 0),
+)
 
 function statusType(status) { return { published: 'success', closed: 'warning' }[status] || 'info' }
 function statusLabel(status) { return { published: '进行中', closed: '已关闭' }[status] || status }
@@ -294,12 +504,167 @@ async function submitAnswers() {
 }
 
 function handleImageChanged(count) {
-  if (count > 0) ElMessage.success(`当前已上传 ${count} 张作文照片`)
+  imageFileCount.value = count
+}
+
+function revokeImagePreviews() {
+  imageObjectUrls.forEach((url) => URL.revokeObjectURL(url))
+  imageObjectUrls = []
+  Object.keys(imagePreviews).forEach((key) => delete imagePreviews[key])
+}
+
+async function loadImagePreviews(files) {
+  revokeImagePreviews()
+  await Promise.all(
+    files.map(async (file) => {
+      try {
+        const url = await loadAuthorizedImage(file.id)
+        imageObjectUrls.push(url)
+        imagePreviews[file.id] = url
+      } catch {
+        // 单页预览失败不阻塞校对
+      }
+    }),
+  )
+}
+
+function resetImageFlow() {
+  revokeImagePreviews()
+  imageStep.value = 'upload'
+  imageFiles.value = []
+  Object.keys(imageTexts).forEach((key) => delete imageTexts[key])
+  imageFileCount.value = 0
+  imageError.value = ''
+  recognizing.value = false
+  confirming.value = false
+  imageSubmissionId.value = null
+}
+
+async function startRecognize() {
+  if (!imageSubmissionId.value || recognizing.value) return
+  if (!imageFiles.value.length && imageFileCount.value === 0) {
+    imageError.value = '请先上传至少 1 张作文照片'
+    return
+  }
+  imageError.value = ''
+  recognizing.value = true
+  try {
+    const response = await transcribeSubmission(imageSubmissionId.value)
+    const files = response.data || []
+    if (!files.length) {
+      imageError.value = '未获取到识别结果，请确认已上传图片'
+      return
+    }
+    imageFiles.value = files
+    files.forEach((file) => {
+      if (!(imageTexts[file.id] || '').trim()) {
+        imageTexts[file.id] = file.extracted_text || ''
+      }
+    })
+    await loadImagePreviews(files)
+    imageStep.value = 'recognize'
+    const failed = files.filter((file) => file.extraction_status !== 'done')
+    if (failed.length) {
+      imageError.value = `第 ${failed.map((file) => file.sort_order).join('、')} 页识别失败，可手动输入后继续`
+    }
+  } catch (error) {
+    imageError.value = error.message || '识别失败，请重试'
+  } finally {
+    recognizing.value = false
+  }
+}
+
+async function manualEntry() {
+  if (!imageSubmissionId.value) return
+  imageError.value = ''
+  try {
+    const response = await fetchSubmissionFiles(imageSubmissionId.value)
+    const files = response.data || []
+    if (!files.length) {
+      imageError.value = '没有可录入的页面，请先上传图片'
+      return
+    }
+    imageFiles.value = files
+    files.forEach((file) => {
+      if (!(imageTexts[file.id] || '').trim()) imageTexts[file.id] = file.extracted_text || ''
+    })
+    await loadImagePreviews(files)
+    imageStep.value = 'recognize'
+  } catch (error) {
+    imageError.value = error.message || '无法进入手动录入'
+  }
+}
+
+function goConfirm() {
+  if (recognizing.value) return
+  if (!imageFiles.value.length) {
+    imageError.value = '没有可确认的页面'
+    return
+  }
+  for (const [index, file] of imageFiles.value.entries()) {
+    if (!(imageTexts[file.id] || '').trim()) {
+      imageError.value = `请补全第 ${index + 1} 页的识别文本`
+      return
+    }
+  }
+  imageError.value = ''
+  imageStep.value = 'confirm'
+}
+
+async function confirmAndSubmit() {
+  if (confirming.value || !imageSubmissionId.value) return
+  const pages = imageFiles.value.map((file) => ({
+    file_id: file.id,
+    confirmed_text: (imageTexts[file.id] || '').trim(),
+  }))
+  if (pages.some((page) => !page.confirmed_text)) {
+    imageError.value = '请补全所有页的识别文本'
+    return
+  }
+  confirming.value = true
+  imageError.value = ''
+  try {
+    await confirmSubmissionExtraction(imageSubmissionId.value, pages)
+    await submitImageSubmission(imageSubmissionId.value)
+    imageStep.value = 'done'
+    ElMessage.success('提交成功，已进入 AI 评价队列')
+    if (activeTask.value?.questions?.length > 1) {
+      ElMessage.warning('请继续完成其余子题作答')
+    }
+    await loadTasks()
+    setTimeout(() => {
+      imageVisible.value = false
+    }, 800)
+  } catch (error) {
+    imageError.value = error.message || '提交失败，请重试当前步骤'
+  } finally {
+    confirming.value = false
+  }
+}
+
+function handleImageDialogClose(done) {
+  if (recognizing.value) {
+    ElMessage.warning('正在识别文字，请稍候…')
+    return
+  }
+  if (imageStep.value === 'recognize' || imageStep.value === 'confirm') {
+    ElMessageBox.confirm('已识别的文本不会自动保存，确认关闭？', '确认关闭', { type: 'warning' })
+      .then(() => done())
+      .catch(() => {})
+    return
+  }
+  done()
+}
+
+function closeImageDialog() {
+  handleImageDialogClose(() => {
+    imageVisible.value = false
+  })
 }
 
 async function openImageSubmit(task) {
   activeTask.value = task
-  imageSubmissionId.value = null
+  resetImageFlow()
   imageVisible.value = true
   imageCreating.value = true
   try {
@@ -313,6 +678,7 @@ async function openImageSubmit(task) {
   }
 }
 
+onBeforeUnmount(revokeImagePreviews)
 onMounted(loadTasks)
 </script>
 
@@ -331,6 +697,18 @@ onMounted(loadTasks)
 .question-requirement { margin-left: 8px; color: var(--wm-text-secondary); font-size: 11px; font-weight: 400; }
 .answer-meta { margin-top: 5px; color: var(--wm-text-secondary); font-size: 11px; }
 .submit-error { margin-top: 12px; }
+.page-list { display: grid; gap: 14px; max-height: 56vh; overflow: auto; padding-right: 4px; }
+.page-card { border: 1px solid var(--wm-border); border-radius: 12px; padding: 12px; }
+.page-card__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.page-card__body { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 12px; }
+.page-thumb { width: 100%; height: 180px; border-radius: 8px; background: #f6f7fb; cursor: zoom-in; }
+.page-thumb--empty { display: grid; place-items: center; color: var(--wm-text-secondary); font-size: 11px; cursor: default; }
+.page-editor { display: flex; flex-direction: column; gap: 6px; }
+.page-warn { margin: 0; color: #b45309; font-size: 11px; }
+.page-meta { color: var(--wm-text-secondary); font-size: 11px; text-align: right; }
+.confirm-summary { display: grid; gap: 6px; margin-bottom: 12px; padding: 12px 14px; border-radius: 10px; background: var(--wm-bg-soft); font-size: 12px; color: var(--wm-text-secondary); }
+.confirm-summary div { display: flex; gap: 18px; flex-wrap: wrap; }
+.done-hint { margin: 12px 0 0; color: #b45309; font-size: 12px; text-align: center; }
 
 @media (max-width: 900px) {
   .task-grid { grid-template-columns: 1fr; }
