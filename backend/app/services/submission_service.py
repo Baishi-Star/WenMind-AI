@@ -136,8 +136,7 @@ def create_image_submission(db: Session, student: User, task_id: int) -> Submiss
     context = writing_task_service.get_student_task(db, student, task_id)
     task: WritingTask = context["task"]
     writing_task_service.assert_can_submit(db, student, task)
-    if not task.questions:
-        raise AppError("该任务未配置子问题，无法提交")
+    writing_task_service.ensure_default_question(db, task)
 
     attempt_no = (
         db.scalar(
@@ -175,14 +174,13 @@ def submit_image_submission(db: Session, student: User, submission_id: int) -> S
         raise ConflictError("请先完成图片识别并确认文本后再提交")
     task = db.get(WritingTask, submission.task_id)
     writing_task_service.assert_can_submit(db, student, task)
-    if not task.questions:
-        raise AppError("该任务未配置子问题，无法提交")
+    questions = writing_task_service.ensure_default_question(db, task)
 
     answer = db.scalar(select(SubmissionAnswer).where(SubmissionAnswer.submission_id == submission.id))
     if answer is None or not answer.confirmed_text.strip():
         raise ConflictError("尚未确认作答文本，无法提交")
 
-    for question in task.questions:
+    for question in questions:
         length = len(answer.confirmed_text)
         if task.word_min and length < task.word_min:
             raise AppError(f"{question.label} 字数不足：当前 {length} 字，要求不少于 {task.word_min} 字")
@@ -192,7 +190,7 @@ def submit_image_submission(db: Session, student: User, submission_id: int) -> S
             raise AppError(f"{question.label} 超过系统上限 {settings.essay_max_chars} 字")
 
     created: list[int] = []
-    for question in task.questions:
+    for question in questions:
         _answer, essay = _upsert_answer_essay(
             db, submission, task, question.id, answer.confirmed_text, student.is_demo
         )
@@ -220,20 +218,19 @@ def create_text_submission(db: Session, student: User, task_id: int, answers: li
     task: WritingTask = context["task"]
     writing_task_service.assert_can_submit(db, student, task)
 
-    question_ids = [question.id for question in task.questions]
-    if not question_ids:
-        raise AppError("该任务未配置子问题，无法提交")
+    questions = writing_task_service.ensure_default_question(db, task)
+    question_ids = [question.id for question in questions]
     submitted_ids = [item.question_id for item in answers]
     if len(set(submitted_ids)) != len(submitted_ids):
         raise AppError("同一子问题不能重复提交作答")
     unknown = set(submitted_ids) - set(question_ids)
     if unknown:
         raise AppError(f"存在不属于该任务的子问题：{sorted(unknown)}")
-    missing = [question for question in task.questions if question.id not in submitted_ids]
+    missing = [question for question in questions if question.id not in submitted_ids]
     if missing:
         raise ConflictError(f"仍有子问题未作答：{missing[0].label}")
 
-    question_map = {question.id: question for question in task.questions}
+    question_map = {question.id: question for question in questions}
     for item in answers:
         question = question_map[item.question_id]
         length = len(item.content)

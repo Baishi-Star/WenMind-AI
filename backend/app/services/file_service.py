@@ -307,11 +307,9 @@ def confirm_extraction(
     if not records:
         raise AppError("尚未上传图片，无法确认")
     task = db.get(WritingTask, submission.task_id)
-    questions = list(
-        db.scalars(select(TaskQuestion).where(TaskQuestion.task_id == task.id).order_by(TaskQuestion.order_no)).all()
-    )
-    if not questions:
-        raise AppError("该任务未配置子问题，无法确认作答")
+    from app.services import writing_task_service
+
+    questions = writing_task_service.ensure_default_question(db, task)
 
     missing_pages = [
         item.sort_order for item in records if item.extraction_status != "done" and item.id not in confirmed_texts

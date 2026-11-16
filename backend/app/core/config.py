@@ -9,7 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 class Settings(BaseSettings):
     app_name: str = "WenMind AI"
-    app_version: str = "0.3.0"
+    app_version: str = "1.0.0"
     app_env: str = "development"
     debug: bool = True
     api_v1_prefix: str = "/api/v1"

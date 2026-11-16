@@ -231,6 +231,9 @@ def create_task(db: Session, user: User, payload: TaskCreate) -> TaskResponse:
     db.flush()
     _replace_targets(db, task, user, payload.targets)
     _replace_questions(db, task, payload.questions)
+    db.flush()
+    if not payload.questions:
+        ensure_default_question(db, task)
     db.commit()
     db.refresh(task)
     return serialize_task(db, task)
@@ -273,6 +276,9 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
         _replace_targets(db, task, user, payload.targets)
     if payload.questions is not None:
         _replace_questions(db, task, payload.questions)
+        db.flush()
+        if not payload.questions:
+            ensure_default_question(db, task)
     db.commit()
     db.refresh(task)
     return serialize_task(db, task)
@@ -301,6 +307,34 @@ def list_task_submissions(db: Session, user: User, task_id: int) -> list[Teacher
         )
         for submission, student_name, answer_count in rows
     ]
+
+
+def ensure_default_question(db: Session, task: WritingTask) -> list[TaskQuestion]:
+    """任务未配置子问题时，视为单一作文题并补一条默认子问题。
+
+    直接查询数据库而非 ORM 关系缓存，避免 _replace_questions 后缓存未刷新
+    导致重复插入 order_no=1 触发唯一约束。
+    """
+    questions = list(
+        db.scalars(
+            select(TaskQuestion)
+            .where(TaskQuestion.task_id == task.id)
+            .order_by(TaskQuestion.order_no)
+        ).all()
+    )
+    if questions:
+        return questions
+    question = TaskQuestion(
+        task_id=task.id,
+        order_no=1,
+        label="作文",
+        question_text=task.prompt_text or task.title,
+        requirements=task.requirements or "",
+        answer_type="text",
+    )
+    db.add(question)
+    db.flush()
+    return [question]
 
 
 def publish_task(db: Session, user: User, task_id: int) -> TaskResponse:

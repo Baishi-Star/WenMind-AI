@@ -79,7 +79,7 @@
           <el-icon><Lock /></el-icon>
           <div>
             <strong>本地演示账号</strong>
-            <span>统一初始密码 Demo@2026 · 登录由后端真实校验并返回 JWT</span>
+            <span>演示账号密码见部署环境变量 DEMO_PASSWORD（首次部署记录于服务端启动日志）· 登录由后端真实校验并返回 JWT</span>
           </div>
         </div>
 
@@ -128,7 +128,7 @@
               v-model="password"
               type="password"
               autocomplete="current-password"
-              placeholder="请输入密码"
+              placeholder="请输入演示密码"
               size="large"
               show-password
               :prefix-icon="Lock"
@@ -198,16 +198,15 @@ const roleIcons = {
 const roleOptions = Object.values(ROLES).map((role) => ({ ...role, username: demoAccounts[role.key] }))
 const selectedRole = ref(authStore.role || 'student')
 const username = ref(demoAccounts[selectedRole.value])
-const password = ref('Demo@2026')
+const password = ref('')
 const entering = ref(false)
 const loginError = ref('')
 
 const selectedRoleInfo = computed(() => ROLES[selectedRole.value])
 
 function selectRole(role) {
-  selectedRole.value = role
+selectedRole.value = role
   username.value = demoAccounts[role]
-  password.value = 'Demo@2026'
   loginError.value = ''
 }
 
