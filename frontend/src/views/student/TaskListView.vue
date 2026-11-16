@@ -396,6 +396,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 
 import PageHeader from '@/components/PageHeader.vue'
 import ImageUploader from '@/components/ImageUploader.vue'
@@ -413,6 +414,7 @@ import { formatDateTime } from '@/utils/format'
 
 const tasks = ref([])
 const loading = ref(false)
+const router = useRouter()
 const submitVisible = ref(false)
 const submitting = ref(false)
 const submitError = ref('')
@@ -493,9 +495,15 @@ async function submitAnswers() {
   submitting.value = true
   try {
     const response = await createSubmission({ task_id: activeTask.value.id, answers })
-    ElMessage.success(`提交成功，评价任务 #${response.data.answers.map((item) => item.evaluation_id).filter(Boolean).join('、')} 已进入后台队列`)
+    const evaluationId = response.data.answers?.find((item) => item.evaluation_id)?.evaluation_id
     submitVisible.value = false
     await loadTasks()
+    if (evaluationId) {
+      ElMessage.success('已提交，正在生成评价')
+      router.push({ path: '/student/evaluations', query: { evaluationId } })
+    } else {
+      ElMessage.success('提交成功，评价任务已进入后台队列')
+    }
   } catch (error) {
     submitError.value = error.message || '提交失败'
   } finally {
@@ -625,16 +633,17 @@ async function confirmAndSubmit() {
   imageError.value = ''
   try {
     await confirmSubmissionExtraction(imageSubmissionId.value, pages)
-    await submitImageSubmission(imageSubmissionId.value)
-    imageStep.value = 'done'
-    ElMessage.success('提交成功，已进入 AI 评价队列')
+    const submitted = await submitImageSubmission(imageSubmissionId.value)
+    const evaluationId = submitted.data.answers?.find((item) => item.evaluation_id)?.evaluation_id
+    await loadTasks()
+    ElMessage.success('已提交，正在生成评价')
     if (activeTask.value?.questions?.length > 1) {
       ElMessage.warning('请继续完成其余子题作答')
     }
-    await loadTasks()
-    setTimeout(() => {
-      imageVisible.value = false
-    }, 800)
+    imageVisible.value = false
+    if (evaluationId) {
+      router.push({ path: '/student/evaluations', query: { evaluationId } })
+    }
   } catch (error) {
     imageError.value = error.message || '提交失败，请重试当前步骤'
   } finally {

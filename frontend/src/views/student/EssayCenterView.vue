@@ -101,6 +101,14 @@
           </template>
         </el-table-column>
         <el-table-column
+          label="最近评价等级"
+          min-width="200"
+        >
+          <template #default="{ row }">
+            <span class="muted">{{ diagnosisLabel(row) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column
           label="更新时间"
           width="170"
         >
@@ -132,11 +140,20 @@
               编辑草稿
             </el-button>
             <el-button
+              v-else-if="progressEvaluation(row)"
+              text
+              type="warning"
+              size="small"
+              @click="openEvaluation(row)"
+            >
+              查看进度
+            </el-button>
+            <el-button
               v-else
               text
               type="primary"
               size="small"
-              @click="router.push('/student/evaluations')"
+              @click="openEvaluation(row)"
             >
               评价任务
             </el-button>
@@ -220,12 +237,14 @@ import { useRouter } from 'vue-router'
 import PageHeader from '@/components/PageHeader.vue'
 import EssayImageViewer from '@/components/EssayImageViewer.vue'
 import { fetchEssay, fetchEssays } from '@/api/essay'
+import { fetchEvaluations } from '@/api/evaluation'
 import { fetchEssayAnnotations, fetchEssayFiles } from '@/api/submission'
 import { formatDateTime } from '@/utils/format'
 
 const router = useRouter()
 const essays = ref([])
 const total = ref(0)
+const latestEvaluations = ref({})
 const statusFilter = ref('')
 const loading = ref(false)
 const detailVisible = ref(false)
@@ -235,8 +254,62 @@ const essayFiles = ref([])
 const essayAnnotations = ref([])
 const detailTab = ref('image')
 
+const DIMENSION_ORDER = ['content', 'expression', 'development', 'organization', 'language']
+const DIMENSION_LABEL = { content: '内容', expression: '表达', development: '发展', organization: '组织', language: '语言' }
+
 function statusType(status) { return { completed: 'success', failed: 'danger', evaluating: 'warning', submitted: 'primary', draft: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '评价完成', failed: '评价失败', evaluating: '评价中', submitted: '已提交', draft: '草稿' }[status] || status }
+function gradeLabel(score) {
+  if (score === null || score === undefined) return '—'
+  if (score >= 17) return '一等'
+  if (score >= 12) return '二等'
+  if (score >= 7) return '三等'
+  return '四等'
+}
+
+function diagnosisLabel(row) {
+  const evaluation = latestEvaluations.value[row.id]
+  if (!evaluation) return '暂无评价'
+  if (evaluation.status !== 'completed') return statusLabel(evaluation.status)
+  const dimensions = [...(evaluation.dimension_scores || [])].sort(
+    (a, b) => DIMENSION_ORDER.indexOf(a.dimension) - DIMENSION_ORDER.indexOf(b.dimension),
+  )
+  if (!dimensions.length) return '暂无等级'
+  return dimensions
+    .map((item) => `${DIMENSION_LABEL[item.dimension] || item.dimension}${gradeLabel(item.original_score)}`)
+    .join(' · ')
+}
+
+function progressEvaluation(row) {
+  const evaluation = latestEvaluations.value[row.id]
+  if (!evaluation) return null
+  if (row.status === 'evaluating' || ['pending', 'processing'].includes(evaluation.status)) return evaluation
+  return null
+}
+
+function openEvaluation(row) {
+  const evaluation = latestEvaluations.value[row.id]
+  router.push({
+    path: '/student/evaluations',
+    query: evaluation ? { evaluationId: evaluation.id } : {},
+  })
+}
+
+async function loadLatestEvaluations() {
+  try {
+    const response = await fetchEvaluations({ page: 1, page_size: 50 })
+    const mapping = {}
+    ;(response.data.items || [])
+      .slice()
+      .sort((a, b) => b.id - a.id)
+      .forEach((item) => {
+        if (!mapping[item.essay_id]) mapping[item.essay_id] = item
+      })
+    latestEvaluations.value = mapping
+  } catch {
+    latestEvaluations.value = {}
+  }
+}
 
 async function loadEssays() {
   loading.value = true
@@ -244,6 +317,7 @@ async function loadEssays() {
     const response = await fetchEssays({ page: 1, page_size: 50, status: statusFilter.value || undefined })
     essays.value = response.data.items
     total.value = response.data.total
+    await loadLatestEvaluations()
   } finally {
     loading.value = false
   }

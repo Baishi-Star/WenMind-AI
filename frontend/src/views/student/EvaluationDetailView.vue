@@ -137,6 +137,58 @@
           class="page-error"
           @close="pageError = ''"
         />
+        <section
+          v-if="currentEvaluation && ['pending', 'processing'].includes(currentEvaluation.status)"
+          class="wm-card progress-card"
+        >
+          <div class="progress-head">
+            <h2>AI 正在分析</h2>
+            <el-tag
+              type="warning"
+              effect="plain"
+            >
+              {{ statusLabel(currentEvaluation.status) }}
+            </el-tag>
+          </div>
+          <p class="progress-hint">
+            AI 正在分析，通常需要 30~120 秒
+          </p>
+          <el-progress :percentage="progressPercent" />
+          <div class="progress-meta">
+            <span>已完成 Agent：{{ completedAgents }} / {{ agentTotal }}</span>
+            <span>已耗时：{{ elapsedSeconds }} 秒</span>
+          </div>
+          <div
+            v-if="(currentEvaluation.agent_runs || []).length"
+            class="agent-list"
+          >
+            <span
+              v-for="run in currentEvaluation.agent_runs"
+              :key="run.id"
+              class="agent-chip"
+              :class="`is-${run.status}`"
+            >
+              {{ agentLabel(run.agent_name) }} · {{ run.status === 'completed' ? '完成' : run.status === 'failed' ? '失败' : '执行中' }}
+            </span>
+          </div>
+          <el-alert
+            v-if="pollTimedOut"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="评价耗时较长，可稍后在「AI 评价结果」查看"
+            class="progress-timeout"
+          />
+        </section>
+        <el-alert
+          v-if="currentEvaluation?.status === 'failed'"
+          type="error"
+          :closable="false"
+          show-icon
+          title="评价失败"
+          :description="currentEvaluation.error_message || '请点击「重新执行失败任务」重试'"
+          class="page-error"
+        />
         <div
           v-if="currentEvaluation"
           class="essay-titles"
@@ -145,7 +197,7 @@
           <span>作文标题（学生自拟）：<strong>{{ currentEvaluation.essay_title || '未填写标题' }}</strong></span>
         </div>
         <EvaluationProcess
-          v-if="currentEvaluation"
+          v-if="currentEvaluation?.status === 'completed'"
           :evaluation="currentEvaluation"
           :essay-content="essayContent"
           @appeal="openAppeal"
@@ -178,8 +230,8 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 import AppealDialog from '@/components/AppealDialog.vue'
@@ -197,6 +249,7 @@ import {
 import { formatDateTime } from '@/utils/format'
 
 const router = useRouter()
+const route = useRoute()
 const essays = ref([])
 const evaluations = ref([])
 const selectedEssayId = ref(null)
@@ -208,10 +261,29 @@ const loading = ref(false)
 const creating = ref(false)
 const executing = ref(false)
 const polling = ref(false)
+const elapsedSeconds = ref(0)
+const pollTimedOut = ref(false)
 const pageError = ref('')
 const appealVisible = ref(false)
 const appealFeedbackItem = ref(null)
 let pollTimer = null
+let pollStartedAt = 0
+const agentTotal = 6
+const completedAgents = computed(
+  () => (currentEvaluation.value?.agent_runs || []).filter((run) => run.status === 'completed').length,
+)
+const progressPercent = computed(() => Math.min(100, Math.round((completedAgents.value / agentTotal) * 100)))
+
+function agentLabel(name) {
+  return {
+    topic_agent: '审题',
+    content_agent: '内容',
+    expression_agent: '表达',
+    development_agent: '发展',
+    feedback_agent: '综合',
+    quality_agent: '质量',
+  }[name] || name
+}
 
 function statusType(status) { return { completed: 'success', failed: 'danger', processing: 'warning', pending: 'info' }[status] || 'info' }
 function statusLabel(status) { return { completed: '已完成', failed: '失败', processing: '执行中', pending: '待处理' }[status] || status }
@@ -260,8 +332,11 @@ async function loadAll() {
   loading.value = true
   try {
     await Promise.all([loadEssays(), loadEvaluations()])
-    if (currentEvaluation.value) await loadEvaluation(currentEvaluation.value.id, false)
-    else if (evaluations.value.length) await selectEvaluation(evaluations.value[0].id)
+    const queryId = Number(route.query.evaluationId)
+    const targetId = Number.isFinite(queryId) && queryId > 0
+      ? queryId
+      : currentEvaluation.value?.id || evaluations.value[0]?.id
+    if (targetId) await selectEvaluation(targetId)
   } finally {
     loading.value = false
   }
@@ -270,7 +345,7 @@ async function loadAll() {
 async function selectEvaluation(evaluationId) {
   stopPolling()
   const evaluation = await loadEvaluation(evaluationId)
-  if (evaluation?.status === 'processing') startPolling()
+  if (evaluation && ['pending', 'processing'].includes(evaluation.status)) startPolling()
 }
 
 async function submitEvaluation() {
@@ -321,13 +396,23 @@ function startPolling() {
   stopPolling()
   if (!currentEvaluation.value) return
   polling.value = true
+  pollTimedOut.value = false
+  elapsedSeconds.value = 0
+  pollStartedAt = Date.now()
   pollTimer = window.setInterval(async () => {
-    const evaluation = await loadEvaluation(currentEvaluation.value.id, false)
+    const elapsed = Math.round((Date.now() - pollStartedAt) / 1000)
+    elapsedSeconds.value = elapsed
+    if (elapsed >= 180) {
+      pollTimedOut.value = true
+      stopPolling()
+      return
+    }
+    const evaluation = await loadEvaluation(currentEvaluation.value?.id, false)
     if (!evaluation || ['completed', 'failed'].includes(evaluation.status)) {
       stopPolling()
       await loadEvaluations()
     }
-  }, 1500)
+  }, 2000)
 }
 
 function stopPolling() {
@@ -357,6 +442,16 @@ onUnmounted(stopPolling)
 .essay-titles { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; padding: 12px 14px; border-radius: 10px; background: var(--wm-bg-soft); color: var(--wm-text-secondary); font-size: 12px; }
 .essay-titles strong { color: var(--wm-text-main); }
 .page-error { margin-bottom: 14px; }
+.progress-card { padding: 20px; margin-bottom: 14px; }
+.progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.progress-head h2 { margin: 0; font-size: 16px; }
+.progress-hint { margin: 8px 0 14px; color: var(--wm-text-secondary); font-size: 12px; }
+.progress-meta { display: flex; gap: 20px; flex-wrap: wrap; margin: 12px 0; color: var(--wm-text-secondary); font-size: 12px; }
+.agent-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.agent-chip { padding: 4px 10px; border-radius: 999px; background: var(--wm-bg-soft); color: var(--wm-text-secondary); font-size: 11px; }
+.agent-chip.is-completed { background: #ecfdf5; color: #047857; }
+.agent-chip.is-failed { background: #fef2f2; color: #b91c1c; }
+.progress-timeout { margin-top: 12px; }
 .empty-evaluation { padding: 50px 20px; }
 
 @media (max-width: 1050px) {
