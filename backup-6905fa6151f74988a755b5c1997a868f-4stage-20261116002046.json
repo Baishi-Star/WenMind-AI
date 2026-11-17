@@ -1,0 +1,117 @@
+{
+  "id": "6905fa6151f74988a755b5c1997a868f",
+  "origin_id": null,
+  "name": "WenMind-AI-CI",
+  "description": "文思智评 CI/CD：代码检查 -> 构建与镜像推送 -> 部署，push 事件自动触发",
+  "manifest_version": "3.0",
+  "region": "cn-north-4",
+  "domain_id": "01a197a38c7d7d81acc3de63927d45d7",
+  "project_id": "85e4664e5429454d870924cda02f1f55",
+  "component_id": null,
+  "is_publish": false,
+  "disable_release_branch_management": null,
+  "creator_id": "01a197a38c7d75a29007cada338b3d60",
+  "creator_name": "hw047368876997096",
+  "updater_id": "01a197a38c7d75a29007cada338b3d60",
+  "create_time": 1794231891000,
+  "update_time": 1794281326000,
+  "deleted": false,
+  "banned": false,
+  "is_collect": false,
+  "from_git_code": null,
+  "from_git_code_repo": null,
+  "access_token": null,
+  "git_code_repo_id": null,
+  "yaml_definition": null,
+  "pac_repo_relation": null,
+  "yaml_content": null,
+  "agency_name": null,
+  "sources": [
+    {
+      "type": "code",
+      "params": {
+        "git_type": "codehub",
+        "git_url": "https://codehub.devcloud.cn-north-4.huaweicloud.com/85e4664e5429454d870924cda02f1f55/WenMind-AI.git",
+        "ssh_git_url": "git@codehub.devcloud.cn-north-4.huaweicloud.com:85e4664e5429454d870924cda02f1f55/WenMind-AI.git",
+        "web_url": "https://devcloud.cn-north-4.huaweicloud.com/codehub/3116975/home",
+        "show_group_name": null,
+        "repo_name": "WenMind-AI",
+        "human_name": null,
+        "default_branch": "main",
+        "endpoint_id": "",
+        "codehub_id": "3116975",
+        "alias": "",
+        "workspace_id": null,
+        "workspace_name": null,
+        "repo_project_id": null
+      }
+    }
+  ],
+  "variables": [],
+  "schedules": null,
+  "triggers": [
+    {
+      "git_url": "https://codehub.devcloud.cn-north-4.huaweicloud.com/85e4664e5429454d870924cda02f1f55/WenMind-AI.git",
+      "git_type": "codehub",
+      "repo_name": null,
+      "project_id": null,
+      "is_auto_comment": null,
+      "events": [
+        {
+          "type": "push",
+          "enable": true,
+          "branches": null,
+          "exclude_branches": null,
+          "paths": null,
+          "exclude_paths": null
+        }
+      ],
+      "hook_id": 1330536,
+      "repo_id": "3116975",
+      "endpoint_id": "",
+      "access_token": null
+    }
+  ],
+  "execution_plans": null,
+  "from_source": 0,
+  "project_name": null,
+  "group_id": null,
+  "group_name": null,
+  "concurrency_control": {
+    "pipeline_id": "6905fa6151f74988a755b5c1997a868f",
+    "concurrency_number": 5,
+    "exceed_action": "ABORT",
+    "create_time": 1794231891000,
+    "update_time": 1794281326000,
+    "enable": false,
+    "group": null,
+    "cancel_in_progress": null
+  },
+  "cancel_strategy": {
+    "id": 784818,
+    "pipeline_id": "6905fa6151f74988a755b5c1997a868f",
+    "cancel_strategies": [
+      {
+        "granularity": "MR",
+        "cancel_strategy": "CANCEL_ALL_RUN"
+      }
+    ],
+    "enable": false
+  },
+  "tag_ids": null,
+  "variable_groups": null,
+  "security_level": null,
+  "security_level_code": null,
+  "permissions": null,
+  "definition": "{\"stages\":[{\"category\":\"\",\"name\":\"代码检查\",\"identifier\":\"stage_check\",\"run_condition\":null,\"type\":null,\"sequence\":0,\"parallel\":null,\"pre\":[{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":null,\"task\":\"official_devcloud_autoTrigger\",\"business_type\":null,\"inputs\":null,\"env\":null,\"sequence\":0,\"identifier\":null,\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"post\":[],\"jobs\":[{\"id\":\"\",\"identifier_old\":null,\"stage_index\":null,\"type\":null,\"name\":\"代码检查\",\"async\":null,\"identifier\":\"JOB_code_check\",\"sequence\":0,\"condition\":null,\"strategy\":null,\"timeout\":\"60\",\"resource\":null,\"uses\":null,\"with\":null,\"secrets\":null,\"secrets_inherit\":false,\"outputs_define\":null,\"matrix_strategy\":null,\"steps\":[{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"下载代码\",\"task\":\"official_git_clone\",\"business_type\":null,\"inputs\":[{\"key\":\"SYSTEM_CLONE_DEPTH\",\"value\":\"5\"},{\"key\":\"SYSTEM_CLONE_SINGLE_BRANCH\",\"value\":\"false\"},{\"key\":\"SYSTEM_CLONE_SUBMODULE_DEPTH\",\"value\":\"0\"}],\"env\":null,\"sequence\":0,\"identifier\":\"STEP_0_official_git_clone\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null},{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"后端语法检查(compileall)\",\"task\":\"official_shell_plugin\",\"business_type\":null,\"inputs\":[{\"key\":\"OFFICIAL_SHELL_SCRIPT_INPUT\",\"value\":\"set -e && cd backend && python -m compileall app\"}],\"env\":null,\"sequence\":1,\"identifier\":\"STEP_1_official_shell_plugin\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null},{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"前端代码检查(eslint)\",\"task\":\"official_shell_plugin\",\"business_type\":null,\"inputs\":[{\"key\":\"OFFICIAL_SHELL_SCRIPT_INPUT\",\"value\":\"set -e && cd frontend && npm ci && npm run lint\"}],\"env\":null,\"sequence\":2,\"identifier\":\"STEP_2_official_shell_plugin\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"matrix_context\":null,\"concurrency\":null,\"env\":null,\"stage_id\":\"1794281314874\",\"pipeline_id\":null,\"unfinished_steps\":null,\"condition_tag\":null,\"exec_type\":\"AGENTLESS_JOB\",\"depends_on\":[],\"reusable_job_id\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"pipeline_id\":null,\"depends_on\":[],\"run_always\":false,\"fail_fast\":null},{\"category\":\"\",\"name\":\"构建与镜像推送\",\"identifier\":\"stage_build\",\"run_condition\":null,\"type\":null,\"sequence\":1,\"parallel\":null,\"pre\":[],\"post\":[],\"jobs\":[{\"id\":\"\",\"identifier_old\":null,\"stage_index\":null,\"type\":null,\"name\":\"构建与镜像推送\",\"async\":null,\"identifier\":\"JOB_build_push\",\"sequence\":0,\"condition\":null,\"strategy\":null,\"timeout\":\"60\",\"resource\":null,\"uses\":null,\"with\":null,\"secrets\":null,\"secrets_inherit\":false,\"outputs_define\":null,\"matrix_strategy\":null,\"steps\":[{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"前端构建\",\"task\":\"official_shell_plugin\",\"business_type\":null,\"inputs\":[{\"key\":\"OFFICIAL_SHELL_SCRIPT_INPUT\",\"value\":\"set -e && cd frontend && npm ci && npm run build\"}],\"env\":null,\"sequence\":0,\"identifier\":\"STEP_0_official_shell_plugin\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null},{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"构建并推送后端镜像到SWR\",\"task\":\"official_docker_executor\",\"business_type\":null,\"inputs\":[{\"key\":\"attribute\",\"value\":\"public\"},{\"key\":\"image\",\"value\":\"swr.cn-north-4.myhuaweicloud.com/wenmind/wenmind-backend:latest\"},{\"key\":\"command\",\"value\":\"uvicorn app.main:app --host 0.0.0.0 --port 8000\"}],\"env\":null,\"sequence\":1,\"identifier\":\"STEP_1_official_docker_executor\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"matrix_context\":null,\"concurrency\":null,\"env\":null,\"stage_id\":\"1794281314875\",\"pipeline_id\":null,\"unfinished_steps\":null,\"condition_tag\":null,\"exec_type\":\"AGENTLESS_JOB\",\"depends_on\":[],\"reusable_job_id\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"pipeline_id\":null,\"depends_on\":[\"stage_check\"],\"run_always\":false,\"fail_fast\":null},{\"category\":\"\",\"name\":\"部署\",\"identifier\":\"stage_deploy\",\"run_condition\":null,\"type\":null,\"sequence\":2,\"parallel\":null,\"pre\":[],\"post\":[],\"jobs\":[{\"id\":\"\",\"identifier_old\":null,\"stage_index\":null,\"type\":null,\"name\":\"部署\",\"async\":null,\"identifier\":\"JOB_deploy\",\"sequence\":0,\"condition\":null,\"strategy\":null,\"timeout\":\"60\",\"resource\":null,\"uses\":null,\"with\":null,\"secrets\":null,\"secrets_inherit\":false,\"outputs_define\":null,\"matrix_strategy\":null,\"steps\":[{\"runtime_attribution\":null,\"multi_step_editable\":0,\"official_task_version\":null,\"icon_url\":null,\"name\":\"部署前端与后端\",\"task\":\"official_shell_plugin\",\"business_type\":null,\"inputs\":[{\"key\":\"OFFICIAL_SHELL_SCRIPT_INPUT\",\"value\":\"set -e && echo deploy-frontend-dist-to-obs && echo deploy-backend-image-on-cce\"}],\"env\":null,\"sequence\":0,\"identifier\":\"STEP_0_official_shell_plugin\",\"endpoint_ids\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"matrix_context\":null,\"concurrency\":null,\"env\":null,\"stage_id\":\"1794281314876\",\"pipeline_id\":null,\"unfinished_steps\":null,\"condition_tag\":null,\"exec_type\":\"AGENTLESS_JOB\",\"depends_on\":[],\"reusable_job_id\":null,\"timeout-minutes\":null,\"continue-on-error\":null}],\"pipeline_id\":null,\"depends_on\":[\"stage_build\"],\"run_always\":false,\"fail_fast\":null}]}",
+  "detail_url": "https://devcloud.cn-north-4.huaweicloud.com/cicd/project/85e4664e5429454d870924cda02f1f55/pipeline/detail/6905fa6151f74988a755b5c1997a868f?from=in-project&v=1",
+  "modify_url": "https://devcloud.cn-north-4.huaweicloud.com/cicd/project/85e4664e5429454d870924cda02f1f55/pipeline/modify/6905fa6151f74988a755b5c1997a868f?from=in-project&v=1",
+  "tags": [],
+  "is_crmodel": null,
+  "archive_source": null,
+  "yaml_repo_properties": null,
+  "variable_group_ids": [],
+  "pac_source_alias": "",
+  "pac_source_repo_https_endpoint": "",
+  "subject_id": "6905fa6151f74988a755b5c1997a868f"
+}
