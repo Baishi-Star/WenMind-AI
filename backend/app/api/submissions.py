@@ -23,6 +23,7 @@ student_only = require_roles(UserRole.STUDENT)
 
 def _serialize_student_task(db: Session, student: User, context: dict) -> StudentTaskResponse:
     task = context["task"]
+    questions = writing_task_service.ensure_default_question(db, task)
     submission = context.get("submission")
     evaluation_statuses = []
     if submission is not None:
@@ -48,7 +49,7 @@ def _serialize_student_task(db: Session, student: User, context: dict) -> Studen
         due_at=task.due_at,
         teacher_name=context.get("teacher_name"),
         class_names=context.get("class_names") or [],
-        questions=[TaskQuestionResponse.model_validate(item) for item in task.questions],
+        questions=[TaskQuestionResponse.model_validate(item) for item in questions],
         submission_status=submission.status if submission else None,
         submission_id=submission.id if submission else None,
         evaluation_statuses=evaluation_statuses,
@@ -63,7 +64,9 @@ def get_student_tasks(
     current_user: User = Depends(student_only),
 ) -> ApiResponse[list[StudentTaskResponse]]:
     contexts = writing_task_service.list_student_tasks(db, current_user, task_status)
-    return success([_serialize_student_task(db, current_user, context) for context in contexts])
+    payloads = [_serialize_student_task(db, current_user, context) for context in contexts]
+    db.commit()
+    return success(payloads)
 
 
 @router.get("/tasks/{task_id}", response_model=ApiResponse[StudentTaskResponse])
@@ -73,7 +76,9 @@ def get_student_task(
     current_user: User = Depends(student_only),
 ) -> ApiResponse[StudentTaskResponse]:
     context = writing_task_service.get_student_task(db, current_user, task_id)
-    return success(_serialize_student_task(db, current_user, context))
+    payload = _serialize_student_task(db, current_user, context)
+    db.commit()
+    return success(payload)
 
 
 @router.post("/submissions", response_model=ApiResponse[SubmissionResponse], status_code=status.HTTP_201_CREATED)

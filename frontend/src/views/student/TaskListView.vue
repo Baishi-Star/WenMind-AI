@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="我的写作任务"
-      subtitle="查看教师下发的写作任务，按子问题逐条作答并提交；提交后系统自动执行多 Agent 评价。"
+      subtitle="查看教师下发的作文任务，提交后可自动进入多 Agent 评价。"
     >
       <template #tag>
         <el-tag
@@ -66,7 +66,7 @@
             size="small"
             effect="plain"
           >
-            {{ task.questions.length }} 道子问题
+            作文题
           </el-tag>
           <el-tag
             size="small"
@@ -212,7 +212,7 @@
             </div>
             <div>
               <span>所属任务：{{ activeTask.title }}</span>
-              <span>子问题：{{ activeTask.questions.length }} 道</span>
+              <span>作文题：1 篇</span>
             </div>
           </div>
           <el-alert
@@ -345,12 +345,12 @@
 
         <el-form label-position="top">
           <el-form-item
-            v-for="question in activeTask.questions"
+            v-for="question in activeTask.questions.slice(0, 1)"
             :key="question.id"
             required
           >
             <template #label>
-              <strong>{{ question.label }}</strong>
+              <strong>作文正文</strong>
               <span class="question-requirement">{{ question.requirements || question.question_text }}</span>
             </template>
             <el-input
@@ -359,7 +359,7 @@
               :rows="8"
               maxlength="20000"
               show-word-limit
-              :placeholder="`请输入${question.label}的作答内容`"
+              placeholder="请输入作文正文"
             />
             <div class="answer-meta">
               当前 {{ (answerMap[question.id] || '').trim().length }} 字
@@ -475,23 +475,25 @@ function openSubmit(task) {
 async function submitAnswers() {
   if (!activeTask.value || submitting.value) return
   submitError.value = ''
-  const answers = []
-  for (const question of activeTask.value.questions) {
-    const content = (answerMap[question.id] || '').trim()
-    if (!content) {
-      submitError.value = `${question.label} 尚未作答`
-      return
-    }
-    if (activeTask.value.word_min && content.length < activeTask.value.word_min) {
-      submitError.value = `${question.label} 字数不足：${content.length} / ${activeTask.value.word_min}`
-      return
-    }
-    if (activeTask.value.word_max && content.length > activeTask.value.word_max) {
-      submitError.value = `${question.label} 字数超限：${content.length} / ${activeTask.value.word_max}`
-      return
-    }
-    answers.push({ question_id: question.id, content })
+  const question = activeTask.value.questions[0]
+  if (!question) {
+    submitError.value = '该任务暂无可作答题目'
+    return
   }
+  const content = (answerMap[question.id] || '').trim()
+  if (!content) {
+    submitError.value = '请先填写作文正文'
+    return
+  }
+  if (activeTask.value.word_min && content.length < activeTask.value.word_min) {
+    submitError.value = `作文正文字数不足：${content.length} / ${activeTask.value.word_min}`
+    return
+  }
+  if (activeTask.value.word_max && content.length > activeTask.value.word_max) {
+    submitError.value = `作文正文字数超限：${content.length} / ${activeTask.value.word_max}`
+    return
+  }
+  const answers = [{ question_id: question.id, content }]
   submitting.value = true
   try {
     const response = await createSubmission({ task_id: activeTask.value.id, answers })

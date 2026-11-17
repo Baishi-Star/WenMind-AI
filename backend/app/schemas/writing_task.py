@@ -55,7 +55,7 @@ class TaskCreate(BaseModel):
     def questions_unique_labels(cls, value):
         labels = [item.label.strip() for item in value]
         if len(labels) != len(set(labels)):
-            raise ValueError("子问题标题不能重复")
+            raise ValueError("题目标签不能重复")
         return value
 
 

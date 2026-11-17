@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
+from app.core.logging import get_logger
 from app.models.base import UserRole, utc_now
 from app.models.essay import EssayPrompt
 from app.models.rubric import RubricVersion
@@ -21,6 +22,8 @@ from app.schemas.writing_task import (
     TeacherTaskSubmissionItem,
 )
 from app.services.access_service import accessible_student_ids, assert_class_access, assert_student_access
+
+logger = get_logger(__name__)
 
 
 def _loads_targets(db: Session, task: WritingTask) -> tuple[list[TaskTargetResponse], list[str]]:
@@ -158,8 +161,8 @@ def _replace_targets(db: Session, task: WritingTask, user: User, targets) -> Non
 
 
 def _replace_questions(db: Session, task: WritingTask, questions) -> None:
-    if len(questions) > settings.task_max_questions:
-        raise AppError(f"单个任务最多支持 {settings.task_max_questions} 道子问题")
+    if len(questions) > 1:
+        raise AppError("单个任务仅支持一篇作文")
     for existing in list(task.questions):
         db.delete(existing)
     db.flush()
@@ -230,9 +233,12 @@ def create_task(db: Session, user: User, payload: TaskCreate) -> TaskResponse:
     db.add(task)
     db.flush()
     _replace_targets(db, task, user, payload.targets)
-    _replace_questions(db, task, payload.questions)
+    questions = payload.questions[:1]
+    if len(payload.questions) > 1:
+        logger.info("任务创建传入 %s 道题目，仅保留第一条作为作文题", len(payload.questions))
+    _replace_questions(db, task, questions)
     db.flush()
-    if not payload.questions:
+    if not questions:
         ensure_default_question(db, task)
     db.commit()
     db.refresh(task)
@@ -246,7 +252,7 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
         raise ConflictError("已关闭或归档的任务不能修改")
     submissions = db.scalar(select(func.count(Submission.id)).where(Submission.task_id == task.id)) or 0
     if submissions and payload.questions is not None:
-        raise ConflictError("已有学生提交，不能再修改子问题结构")
+        raise ConflictError("已有学生提交，不能再修改题目")
     if payload.title is not None:
         task.title = payload.title.strip() or task.prompt_text.strip()[:60]
     if payload.prompt_text is not None:
@@ -275,9 +281,12 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
     if payload.targets is not None:
         _replace_targets(db, task, user, payload.targets)
     if payload.questions is not None:
-        _replace_questions(db, task, payload.questions)
+        questions = payload.questions[:1]
+        if len(payload.questions) > 1:
+            logger.info("任务 %s 更新传入 %s 道题目，仅保留第一条作为作文题", task.id, len(payload.questions))
+        _replace_questions(db, task, questions)
         db.flush()
-        if not payload.questions:
+        if not questions:
             ensure_default_question(db, task)
     db.commit()
     db.refresh(task)
@@ -310,7 +319,7 @@ def list_task_submissions(db: Session, user: User, task_id: int) -> list[Teacher
 
 
 def ensure_default_question(db: Session, task: WritingTask) -> list[TaskQuestion]:
-    """任务未配置子问题时，视为单一作文题并补一条默认子问题。
+    """任务未配置题目时，视为单一作文题并补一条默认题目。
 
     直接查询数据库而非 ORM 关系缓存，避免 _replace_questions 后缓存未刷新
     导致重复插入 order_no=1 触发唯一约束。

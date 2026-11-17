@@ -2,7 +2,7 @@
   <div>
     <PageHeader
       title="作文任务"
-      subtitle="创建并下发写作任务：可指向班级或学生、设置字数与截止时间、逐条下发多道子问题，并绑定已发布量规。"
+      subtitle="创建并下发作文任务：填写题目/材料与要求，设置字数、截止与下发范围，并绑定已发布量规。"
     >
       <template #tag>
         <el-tag
@@ -93,14 +93,7 @@
           </template>
         </el-table-column>
         <el-table-column
-          label="子问题"
-          width="90"
-        >
-          <template #default="{ row }">
-            {{ row.question_count }} 道
-          </template>
-        </el-table-column>
-        <el-table-column
+
           label="字数"
           width="120"
         >
@@ -283,40 +276,6 @@
             <el-switch v-model="form.allow_resubmit" />
           </el-form-item>
         </div>
-
-        <div class="section-title">
-          子问题（逐条下发，可多道；留空表示单一作文题）
-        </div>
-        <div
-          v-for="(question, index) in form.questions"
-          :key="index"
-          class="question-row"
-        >
-          <el-input
-            v-model.trim="question.label"
-            placeholder="标签，如 问题一"
-            class="question-row__label"
-          />
-          <el-input
-            v-model="question.question_text"
-            type="textarea"
-            :rows="2"
-            placeholder="子问题内容"
-          />
-          <el-button
-            text
-            type="danger"
-            @click="form.questions.splice(index, 1)"
-          >
-            移除
-          </el-button>
-        </div>
-        <el-button
-          size="small"
-          @click="addQuestion"
-        >
-          + 添加子问题
-        </el-button>
       </el-form>
       <el-alert
         v-if="formError"
@@ -376,23 +335,6 @@
               {{ detail.targets.map((item) => item.target_name).join('、') || '未指定' }}
             </el-descriptions-item>
           </el-descriptions>
-          <div class="section-title">
-            子问题（{{ detail.questions.length }}）
-          </div>
-          <el-empty
-            v-if="detail.questions.length === 0"
-            description="未配置子问题，按单一作文题提交"
-            :image-size="60"
-          />
-          <article
-            v-for="question in detail.questions"
-            :key="question.id"
-            class="question-view"
-          >
-            <strong>{{ question.order_no }}. {{ question.label }}</strong>
-            <p>{{ question.question_text }}</p>
-            <small v-if="question.requirements">要求：{{ question.requirements }}</small>
-          </article>
         </template>
       </div>
     </el-drawer>
@@ -440,7 +382,7 @@ const emptyForm = () => ({
   word_max: 0,
   allow_resubmit: false,
   due_at: null,
-  questions: [],
+
 })
 const form = reactive(emptyForm())
 
@@ -497,29 +439,12 @@ function openEdit(row) {
     word_max: row.word_max,
     allow_resubmit: row.allow_resubmit,
     due_at: row.due_at ? new Date(row.due_at) : null,
-    questions: row.questions.map((item) => ({
-      label: item.label,
-      question_text: item.question_text,
-      requirements: item.requirements,
-      answer_type: item.answer_type,
-      max_score: item.max_score,
-    })),
+
   })
   selectedTargetKeys.value = row.targets.map((item) => `${item.target_type}:${item.target_id}`)
   formVisible.value = true
 }
 
-function addQuestion() {
-  const index = form.questions.length + 1
-  const labels = ['问题一', '问题二', '问题三', '问题四', '问题五']
-  form.questions.push({
-    label: labels[index - 1] || `问题${index}`,
-    question_text: '',
-    requirements: '',
-    answer_type: 'text',
-    max_score: null,
-  })
-}
 
 async function submitForm() {
   formError.value = ''
@@ -539,15 +464,7 @@ async function submitForm() {
     formError.value = '请至少选择一个班级或学生作为下发范围'
     return
   }
-  const questions = form.questions
-    .filter((item) => item.question_text.trim())
-    .map((item) => ({
-      label: item.label.trim() || '问题',
-      question_text: item.question_text.trim(),
-      requirements: item.requirements || '',
-      answer_type: item.answer_type || 'text',
-      max_score: item.max_score || null,
-    }))
+
   const payload = {
     title: form.title.trim(),
     prompt_text: form.prompt_text.trim(),
@@ -558,7 +475,7 @@ async function submitForm() {
     allow_resubmit: form.allow_resubmit,
     due_at: form.due_at ? form.due_at.toISOString() : null,
     targets,
-    questions,
+
   }
   submitting.value = true
   try {

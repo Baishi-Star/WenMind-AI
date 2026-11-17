@@ -174,7 +174,7 @@ def submit_image_submission(db: Session, student: User, submission_id: int) -> S
         raise ConflictError("请先完成图片识别并确认文本后再提交")
     task = db.get(WritingTask, submission.task_id)
     writing_task_service.assert_can_submit(db, student, task, exclude_submission_id=submission.id)
-    questions = writing_task_service.ensure_default_question(db, task)
+    questions = writing_task_service.ensure_default_question(db, task)[:1]
 
     answer = db.scalar(select(SubmissionAnswer).where(SubmissionAnswer.submission_id == submission.id))
     if answer is None or not answer.confirmed_text.strip():
@@ -218,17 +218,17 @@ def create_text_submission(db: Session, student: User, task_id: int, answers: li
     task: WritingTask = context["task"]
     writing_task_service.assert_can_submit(db, student, task)
 
-    questions = writing_task_service.ensure_default_question(db, task)
+    questions = writing_task_service.ensure_default_question(db, task)[:1]
     question_ids = [question.id for question in questions]
     submitted_ids = [item.question_id for item in answers]
     if len(set(submitted_ids)) != len(submitted_ids):
-        raise AppError("同一子问题不能重复提交作答")
+        raise AppError("同一题目不能重复提交作答")
     unknown = set(submitted_ids) - set(question_ids)
     if unknown:
-        raise AppError(f"存在不属于该任务的子问题：{sorted(unknown)}")
+        raise AppError(f"存在不属于该任务的题目：{sorted(unknown)}")
     missing = [question for question in questions if question.id not in submitted_ids]
     if missing:
-        raise ConflictError(f"仍有子问题未作答：{missing[0].label}")
+        raise ConflictError(f"仍有题目未作答：{missing[0].label}")
 
     question_map = {question.id: question for question in questions}
     for item in answers:

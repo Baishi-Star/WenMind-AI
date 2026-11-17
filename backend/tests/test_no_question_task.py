@@ -56,13 +56,13 @@ def test_task_without_questions_gets_default_and_accepts_submission(client, db_s
     assert count == 1
 
 
-def test_task_with_three_questions_keeps_structure(client):
+def test_task_with_multiple_questions_keeps_first_only(client):
     teacher = login_headers(client, "demo_teacher")
     class_id, rubric_id = _class_and_rubric(client, teacher)
     created = client.post(
         "/api/v1/teacher/tasks",
         json={
-            "title": "三子问题任务",
+            "title": "多题目输入任务",
             "prompt_text": "围绕邻里关系分三点展开。",
             "requirements": "分点作答",
             "rubric_version_id": rubric_id,
@@ -77,5 +77,6 @@ def test_task_with_three_questions_keeps_structure(client):
     )
     assert created.status_code == 201, created.text
     questions = created.json()["data"]["questions"]
-    assert len(questions) == 3
-    assert [item["label"] for item in questions] == ["问题一", "问题二", "问题三"]
+    assert len(questions) == 1
+    assert questions[0]["label"] == "问题一"
+    assert questions[0]["question_text"] == "观点是什么？"
