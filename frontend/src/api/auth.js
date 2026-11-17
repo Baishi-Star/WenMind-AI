@@ -7,3 +7,10 @@ export function login(payload) {
 export function fetchCurrentUser() {
   return request.get('/auth/me', { silent: true })
 }
+export function fetchDemoStatus() {
+  return request.get('/auth/demo-status', { silent: true })
+}
+
+export function demoLogin(role) {
+  return request.post('/auth/demo-login', { role }, { silent: true })
+}

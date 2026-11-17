@@ -95,10 +95,18 @@
             class="role-card"
             :class="{ 'is-selected': selectedRole === item.key }"
             :aria-pressed="selectedRole === item.key"
-            @click="selectRole(item.key)"
+            :disabled="Boolean(demoBusyRole)"
+            @click="handleRoleClick(item.key)"
           >
             <span class="role-card__icon"><el-icon><component :is="roleIcons[item.key]" /></el-icon></span>
-            <span class="role-card__text"><strong>{{ item.name }}</strong><small>{{ item.username }}</small></span>
+            <span class="role-card__text">
+              <strong>{{ item.name }}</strong>
+              <small>{{ demoBusyRole === item.key ? '正在进入…' : item.username }}</small>
+            </span>
+            <span
+              v-if="demoEnabled"
+              class="role-card__badge"
+            >一键进入</span>
             <span class="role-card__indicator" />
           </button>
         </div>
@@ -173,12 +181,13 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Connection, Lock, Reading, Right, Setting, User, UserFilled } from '@element-plus/icons-vue'
 
 import { ROLES } from '@/config/portal'
+import { demoLogin, fetchDemoStatus } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -195,7 +204,15 @@ const roleIcons = {
   teacher: UserFilled,
   admin: Setting,
 }
-const roleOptions = Object.values(ROLES).map((role) => ({ ...role, username: demoAccounts[role.key] }))
+const serverAccounts = ref({})
+const roleOptions = computed(() =>
+  Object.values(ROLES).map((role) => ({
+    ...role,
+    username: serverAccounts.value[role.key]?.username || demoAccounts[role.key],
+  })),
+)
+const demoEnabled = ref(false)
+const demoBusyRole = ref('')
 const selectedRole = ref(authStore.role || 'student')
 const username = ref(demoAccounts[selectedRole.value])
 const password = ref('')
@@ -206,9 +223,53 @@ const selectedRoleInfo = computed(() => ROLES[selectedRole.value])
 
 function selectRole(role) {
 selectedRole.value = role
-  username.value = demoAccounts[role]
+  username.value = serverAccounts.value[role]?.username || demoAccounts[role]
   loginError.value = ''
 }
+
+async function handleRoleClick(role) {
+  if (demoBusyRole.value) return
+  selectRole(role)
+  if (!demoEnabled.value) {
+    ElMessage.warning('演示登录已关闭，请使用下方账号密码手动登录')
+    return
+  }
+  demoBusyRole.value = role
+  loginError.value = ''
+  try {
+    const response = await demoLogin(role)
+    const { access_token: accessToken, user } = response.data
+    const home = authStore.applySession(accessToken, user)
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+    const target = redirect.startsWith(`/${user.role}/`) ? redirect : home
+    ElMessage.success(`已进入${ROLES[user.role]?.name || ''}工作台，欢迎${user.display_name}`)
+    await router.push(target)
+  } catch (error) {
+    loginError.value = error.message || '演示登录失败，请使用下方账号密码手动登录'
+    ElMessage.error(loginError.value)
+  } finally {
+    demoBusyRole.value = ''
+  }
+}
+
+async function loadDemoStatus() {
+  try {
+    const response = await fetchDemoStatus()
+    demoEnabled.value = Boolean(response.data.enabled)
+    const mapping = {}
+    ;(response.data.accounts || []).forEach((account) => {
+      mapping[account.role] = { username: account.username, display_name: account.display_name }
+    })
+    serverAccounts.value = mapping
+    if (!authStore.isAuthenticated) {
+      username.value = mapping[selectedRole.value]?.username || demoAccounts[selectedRole.value]
+    }
+  } catch {
+    demoEnabled.value = false
+  }
+}
+
+onMounted(loadDemoStatus)
 
 async function enterPortal() {
   if (!username.value || !password.value || entering.value) return
@@ -622,6 +683,17 @@ async function enterPortal() {
   font-size: 9px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.role-card__badge {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, 0.1);
+  color: var(--wm-primary);
+  font-size: 9px;
 }
 
 .role-card__indicator {

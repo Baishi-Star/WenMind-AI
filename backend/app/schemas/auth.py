@@ -1,5 +1,6 @@
 """认证相关请求与响应模型，与数据库 Model 分离。"""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,3 +33,17 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserResponse
+
+class DemoLoginRequest(BaseModel):
+    role: Literal["student", "teacher", "admin"]
+
+
+class DemoAccount(BaseModel):
+    role: str
+    username: str
+    display_name: str
+
+
+class DemoStatusResponse(BaseModel):
+    enabled: bool
+    accounts: list[DemoAccount]

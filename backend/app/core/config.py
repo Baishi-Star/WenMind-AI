@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "WenMind AI"
     app_version: str = "1.0.0"
     app_env: str = "development"
+    demo_login_enabled: bool = True
     debug: bool = True
     api_v1_prefix: str = "/api/v1"
     host: str = "0.0.0.0"

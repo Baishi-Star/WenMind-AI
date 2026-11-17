@@ -31,7 +31,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function login(username, password) {
     const response = await loginRequest({ username, password })
-    const { access_token: accessToken, user } = response.data
+    return applySession(response.data.access_token, response.data.user)
+  }
+
+  function applySession(accessToken, user) {
     localStorage.setItem(TOKEN_KEY, accessToken)
     session.value = { user, loginAt: new Date().toISOString() }
     localStorage.setItem(SESSION_KEY, JSON.stringify(session.value))
@@ -55,6 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
     displayName,
     homePath,
     login,
+    applySession,
     logout,
   }
 })
