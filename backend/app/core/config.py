@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
     llm_json_mode: bool = False
     llm_max_tokens: int = 8192
+    llm_agent_max_tokens: int = 6000
+    llm_agent_temperature: float = 0.2
     llm_vision_max_tokens: int = 4096
     llm_vision_timeout_seconds: int = 180
 

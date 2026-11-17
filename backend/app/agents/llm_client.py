@@ -10,7 +10,10 @@ from pydantic import ValidationError
 from app.agents.mock_engine import MOCK_MODEL_NAME, run_mock_agent
 from app.core.config import settings
 from app.core.exceptions import AppError, ErrorCode
+from app.core.logging import get_logger
 from app.schemas.agent import AgentResult
+
+logger = get_logger(__name__)
 
 AGENT_PROMPT_VERSION = "agent-prompt-v2.0"
 AGENT_DIMENSIONS = {
@@ -136,6 +139,7 @@ class AgentLLMClient:
                 503,
             )
         system_prompt = (
+            "直接输出一个 JSON 对象，不要输出任何思考过程、解释、Markdown 代码块或前后缀文字。"
             f"你是 WenMind AI 的 {agent_name}。{AGENT_INSTRUCTIONS[agent_name]}"
             "你只输出一个合法 JSON 对象，不输出 Markdown、解释文字或隐藏思维链。"
             "必须包含 agent_name、task、analysis、evidence、suggestions、confidence、status。"
@@ -160,8 +164,8 @@ class AgentLLMClient:
             input_payload["repair_instruction"] = "上次输出未通过 JSON Schema，请修正字段、分数范围和原文证据后重新输出完整 JSON。"
         request_body = {
             "model": settings.llm_model,
-            "temperature": 0.2,
-            "max_tokens": settings.llm_max_tokens,
+            "temperature": settings.llm_agent_temperature,
+            "max_tokens": settings.llm_agent_max_tokens,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(input_payload, ensure_ascii=False)},
@@ -187,13 +191,35 @@ class AgentLLMClient:
             content = message.get("content") or ""
             reasoning = message.get("reasoning_content") or ""
             finish_reason = payload["choices"][0].get("finish_reason")
-            if not content.strip() and not reasoning.strip():
+            if finish_reason == "length":
                 raise AppError(
-                    f"{agent_name} 返回空内容（finish_reason={finish_reason}），请稍后重试",
+                    f"模型输出被长度限制截断，请提高 LLM_AGENT_MAX_TOKENS（当前 {settings.llm_agent_max_tokens}）",
                     ErrorCode.UPSTREAM_UNAVAILABLE,
                     503,
                 )
-            extracted = self._extract_json(content, reasoning)
+            if not content.strip() and reasoning.strip():
+                raise AppError(
+                    "模型仅返回思考内容、正式回答为空，请提高 LLM_AGENT_MAX_TOKENS 或改用非推理模型",
+                    ErrorCode.UPSTREAM_UNAVAILABLE,
+                    503,
+                )
+            if not content.strip() and not reasoning.strip():
+                raise AppError("模型返回内容为空", ErrorCode.UPSTREAM_UNAVAILABLE, 503)
+            try:
+                extracted = self._extract_json(content, reasoning)
+            except json.JSONDecodeError as exc:
+                logger.warning(
+                    "Agent %s JSON 提取失败 finish_reason=%s content_len=%s tail=%r",
+                    agent_name,
+                    finish_reason,
+                    len(content),
+                    (content or reasoning)[:500],
+                )
+                raise AppError(
+                    f"Agent 输出未通过结构化校验：未找到 JSON 对象（finish_reason={finish_reason}，content 长度 {len(content)}）",
+                    ErrorCode.UPSTREAM_UNAVAILABLE,
+                    503,
+                ) from exc
             result = AgentResult.model_validate(extracted)
             if result.agent_name != agent_name:
                 raise ValueError(f"agent_name 应为 {agent_name}")

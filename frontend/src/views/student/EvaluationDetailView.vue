@@ -189,6 +189,17 @@
           :description="currentEvaluation.error_message || '请点击「重新执行失败任务」重试'"
           class="page-error"
         />
+        <el-collapse
+          v-if="currentEvaluation?.status === 'failed'"
+          class="failure-detail"
+        >
+          <el-collapse-item
+            title="技术详情（可复制）"
+            name="detail"
+          >
+            <pre class="failure-message">{{ currentEvaluation.error_message || '暂无更详细的技术信息' }}</pre>
+          </el-collapse-item>
+        </el-collapse>
         <div
           v-if="currentEvaluation"
           class="essay-titles"
@@ -442,6 +453,8 @@ onUnmounted(stopPolling)
 .essay-titles { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; padding: 12px 14px; border-radius: 10px; background: var(--wm-bg-soft); color: var(--wm-text-secondary); font-size: 12px; }
 .essay-titles strong { color: var(--wm-text-main); }
 .page-error { margin-bottom: 14px; }
+.failure-detail { margin-bottom: 14px; }
+.failure-message { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; color: var(--wm-text-secondary); }
 .progress-card { padding: 20px; margin-bottom: 14px; }
 .progress-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .progress-head h2 { margin: 0; font-size: 16px; }
