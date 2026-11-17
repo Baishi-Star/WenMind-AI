@@ -27,6 +27,26 @@
       <span class="uploader-count">已上传 {{ files.length }} / {{ maxPages }} 页</span>
     </div>
 
+    <div
+      v-if="compressionInfo"
+      class="compression-info"
+    >
+      <img
+        v-if="compressionInfo.previewUrl"
+        :src="compressionInfo.previewUrl"
+        alt="原图预览"
+        class="compression-preview"
+      >
+      <div class="compression-meta">
+        <strong>{{ compressionInfo.compressed ? '已压缩上传' : '未压缩（原图上传）' }}</strong>
+        <span>
+          {{ compressionInfo.compressed
+            ? `已压缩：${formatSize(compressionInfo.originalSize)} → ${formatSize(compressionInfo.uploadSize)}`
+            : `原图体积：${formatSize(compressionInfo.originalSize)}` }}
+        </span>
+      </div>
+    </div>
+
     <el-alert
       v-if="error"
       type="error"
@@ -130,11 +150,42 @@ const uploading = ref(false)
 const deletingId = ref(null)
 const error = ref('')
 const objectUrls = new Set()
+const compressionInfo = ref(null)
+let compressionPreviewUrl = ''
+const MAX_EDGE = 1600
+const JPEG_QUALITY = 0.82
 
 function revokePreviews() {
   objectUrls.forEach((url) => URL.revokeObjectURL(url))
   objectUrls.clear()
   previews.value = {}
+}
+
+async function compressImage(file) {
+  if (!window.createImageBitmap || !document.createElement) {
+    return { blob: file, originalSize: file.size, compressed: false }
+  }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const largest = Math.max(bitmap.width, bitmap.height)
+    const scale = largest > MAX_EDGE ? MAX_EDGE / largest : 1
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    if (bitmap.close) bitmap.close()
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY))
+    if (!blob || blob.size >= file.size) {
+      return { blob: file, originalSize: file.size, compressed: false }
+    }
+    return {
+      blob: new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' }),
+      originalSize: file.size,
+      compressed: true,
+    }
+  } catch {
+    return { blob: file, originalSize: file.size, compressed: false }
+  }
 }
 
 function formatSize(bytes) {
@@ -175,9 +226,28 @@ async function handleSelect(file) {
   if (!raw) return
   error.value = ''
   uploading.value = true
+  if (compressionPreviewUrl) URL.revokeObjectURL(compressionPreviewUrl)
+  compressionPreviewUrl = URL.createObjectURL(raw)
+  compressionInfo.value = {
+    originalSize: raw.size,
+    uploadSize: raw.size,
+    compressed: false,
+    previewUrl: compressionPreviewUrl,
+  }
   try {
-    const response = await uploadSubmissionFiles(props.submissionId, [raw], 'photo')
-    ElMessage.success(`已上传 ${response.data.length} 张图片`)
+    const result = await compressImage(raw)
+    compressionInfo.value = {
+      originalSize: result.originalSize,
+      uploadSize: result.blob.size,
+      compressed: result.compressed,
+      previewUrl: compressionPreviewUrl,
+    }
+    await uploadSubmissionFiles(props.submissionId, [result.blob], 'photo')
+    ElMessage.success(
+      result.compressed
+        ? `已压缩上传（${formatSize(result.originalSize)} → ${formatSize(result.blob.size)}）`
+        : '已上传原图',
+    )
     await loadFiles()
   } catch (requestError) {
     error.value = requestError.message || '图片上传失败'
@@ -236,7 +306,10 @@ async function remove(file) {
 }
 
 defineExpose({ loadFiles, fileCount: () => files.value.length })
-onBeforeUnmount(revokePreviews)
+onBeforeUnmount(() => {
+  revokePreviews()
+  if (compressionPreviewUrl) URL.revokeObjectURL(compressionPreviewUrl)
+})
 loadFiles()
 </script>
 
@@ -245,6 +318,11 @@ loadFiles()
 .uploader-actions { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .uploader-count { color: var(--wm-text-secondary); font-size: 12px; }
 .uploader-error { margin-bottom: 14px; }
+.compression-info { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; background: var(--wm-bg-soft); }
+.compression-preview { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--wm-border); }
+.compression-meta { display: flex; flex-direction: column; gap: 4px; }
+.compression-meta strong { font-size: 12px; }
+.compression-meta span { color: var(--wm-text-secondary); font-size: 11px; }
 .thumb-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
 .thumb { border: 1px solid var(--wm-border); border-radius: 12px; overflow: hidden; background: #fff; }
 .thumb.is-first { border-color: var(--wm-primary); }

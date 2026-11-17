@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = 60
     llm_json_mode: bool = False
     llm_max_tokens: int = 8192
-    llm_vision_max_tokens: int = 16384
+    llm_vision_max_tokens: int = 4096
     llm_vision_timeout_seconds: int = 180
 
     embedding_mode: str = "auto"
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     ocr_base_url: str = ""
     ocr_api_key: str = ""
     ocr_model: str = ""
-    ocr_timeout_seconds: int = 60
+    ocr_timeout_seconds: int = 120
     essay_image_max_mb: int = 5
     essay_image_dir: str = "data/uploads/essays"
 

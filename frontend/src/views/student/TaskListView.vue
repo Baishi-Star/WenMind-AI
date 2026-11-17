@@ -117,6 +117,25 @@
           :description="activeTask.prompt_text"
           class="submit-notice"
         />
+        <div
+          v-if="recognizing"
+          class="recognize-progress"
+        >
+          <span>正在识别…已用 {{ recognizeElapsed }} 秒（通常 15~40 秒）</span>
+          <el-alert
+            v-if="recognizeElapsed >= 60"
+            type="warning"
+            :closable="false"
+            show-icon
+            title="图片较复杂，识别可能稍久，请勿关闭"
+          />
+        </div>
+        <p
+          v-if="lastRecognizeSeconds && !recognizing && imageStep === 'recognize'"
+          class="recognize-cost"
+        >
+          识别耗时 {{ lastRecognizeSeconds }} 秒
+        </p>
 
         <template v-if="imageStep === 'upload'">
           <ImageUploader
@@ -433,6 +452,9 @@ const imageError = ref('')
 const recognizing = ref(false)
 const confirming = ref(false)
 let imageObjectUrls = []
+const recognizeElapsed = ref(0)
+const lastRecognizeSeconds = ref(null)
+let recognizeTimer = null
 
 const imageDialogTitle = computed(() => {
   if (!activeTask.value) return '上传作文照片'
@@ -538,7 +560,21 @@ async function loadImagePreviews(files) {
   )
 }
 
+function startRecognizeTimer() {
+  stopRecognizeTimer()
+  recognizeElapsed.value = 0
+  recognizeTimer = window.setInterval(() => {
+    recognizeElapsed.value += 1
+  }, 1000)
+}
+
+function stopRecognizeTimer() {
+  if (recognizeTimer) window.clearInterval(recognizeTimer)
+  recognizeTimer = null
+}
+
 function resetImageFlow() {
+  stopRecognizeTimer()
   revokeImagePreviews()
   imageStep.value = 'upload'
   imageFiles.value = []
@@ -547,6 +583,8 @@ function resetImageFlow() {
   imageError.value = ''
   recognizing.value = false
   confirming.value = false
+  recognizeElapsed.value = 0
+  lastRecognizeSeconds.value = null
   imageSubmissionId.value = null
 }
 
@@ -558,6 +596,8 @@ async function startRecognize() {
   }
   imageError.value = ''
   recognizing.value = true
+  const startedAt = Date.now()
+  startRecognizeTimer()
   try {
     const response = await transcribeSubmission(imageSubmissionId.value)
     const files = response.data || []
@@ -572,6 +612,7 @@ async function startRecognize() {
       }
     })
     await loadImagePreviews(files)
+    lastRecognizeSeconds.value = Math.max(1, Math.round((Date.now() - startedAt) / 1000))
     imageStep.value = 'recognize'
     const failed = files.filter((file) => file.extraction_status !== 'done')
     if (failed.length) {
@@ -580,6 +621,7 @@ async function startRecognize() {
   } catch (error) {
     imageError.value = error.message || '识别失败，请重试'
   } finally {
+    stopRecognizeTimer()
     recognizing.value = false
   }
 }
@@ -689,7 +731,10 @@ async function openImageSubmit(task) {
   }
 }
 
-onBeforeUnmount(revokeImagePreviews)
+onBeforeUnmount(() => {
+  stopRecognizeTimer()
+  revokeImagePreviews()
+})
 onMounted(loadTasks)
 </script>
 
@@ -708,6 +753,8 @@ onMounted(loadTasks)
 .question-requirement { margin-left: 8px; color: var(--wm-text-secondary); font-size: 11px; font-weight: 400; }
 .answer-meta { margin-top: 5px; color: var(--wm-text-secondary); font-size: 11px; }
 .submit-error { margin-top: 12px; }
+.recognize-progress { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; color: var(--wm-text-secondary); font-size: 12px; }
+.recognize-cost { margin: 0 0 12px; color: #047857; font-size: 12px; }
 .page-list { display: grid; gap: 14px; max-height: 56vh; overflow: auto; padding-right: 4px; }
 .page-card { border: 1px solid var(--wm-border); border-radius: 12px; padding: 12px; }
 .page-card__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
