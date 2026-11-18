@@ -408,8 +408,10 @@
                       >
                         <el-input-number
                           v-model="reviewForm.dimension_scores[item.dimension]"
-                          :min="1"
-                          :max="5"
+                          :min="DIMENSION_SCORE_MIN"
+                          :max="DIMENSION_SCORE_MAX"
+                          :step="1"
+                          :precision="0"
                         />
                       </el-form-item>
                     </div>
@@ -653,6 +655,9 @@ const dimensions = [
   { value: 'topic', label: '审题' },
 ]
 
+const DIMENSION_SCORE_MIN = 0
+const DIMENSION_SCORE_MAX = 20
+
 const reviewForm = reactive({
   decision: 'adjust',
   dimension_scores: {},
@@ -752,7 +757,7 @@ function initializeReviewForm() {
   reviewForm.decision = 'adjust'
   reviewForm.dimension_scores = {}
   detail.value.evaluation.dimension_scores.forEach((item) => {
-    reviewForm.dimension_scores[item.dimension] = item.final_score ?? item.original_score ?? 12
+    reviewForm.dimension_scores[item.dimension] = item.final_score ?? item.original_score ?? DIMENSION_SCORE_MIN
   })
   reviewForm.feedback_changes = {}
   detail.value.feedback_items.filter((item) => !item.teacher_feedback).forEach((item) => {
@@ -771,6 +776,17 @@ function toggleTag(code) {
   } else {
     reviewForm.classification_codes.push(code)
   }
+}
+
+function validateDimensionScores() {
+  for (const item of detail.value.evaluation.dimension_scores) {
+    const value = reviewForm.dimension_scores[item.dimension]
+    if (!Number.isInteger(value) || value < DIMENSION_SCORE_MIN || value > DIMENSION_SCORE_MAX) {
+      ElMessage.error(`${dimensionLabel(item.dimension)}得分必须为 ${DIMENSION_SCORE_MIN}–${DIMENSION_SCORE_MAX} 的整数`)
+      return false
+    }
+  }
+  return true
 }
 
 async function submitReview() {
@@ -795,6 +811,7 @@ async function submitReview() {
     revised_summary: null,
   }
   if (reviewForm.decision === 'adjust') {
+    if (!validateDimensionScores()) return
     payload.dimension_updates = detail.value.evaluation.dimension_scores.map((item) => ({
       dimension: item.dimension,
       final_score: reviewForm.dimension_scores[item.dimension],
