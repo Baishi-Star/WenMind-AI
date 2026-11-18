@@ -1,4 +1,6 @@
 """无子问题任务的默认兜底与三子问题回归。"""
+import base64
+
 from sqlalchemy import func, select
 
 from app.models.writing_task import TaskQuestion
@@ -80,3 +82,58 @@ def test_task_with_multiple_questions_keeps_first_only(client):
     assert len(questions) == 1
     assert questions[0]["label"] == "问题一"
     assert questions[0]["question_text"] == "观点是什么？"
+
+PNG_1X1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+def test_task_without_questions_accepts_full_image_flow(client, db_session):
+    teacher = login_headers(client, "demo_teacher")
+    class_id, rubric_id = _class_and_rubric(client, teacher)
+    created = client.post(
+        "/api/v1/teacher/tasks",
+        json={
+            "title": "无子问题图片任务",
+            "prompt_text": "无子问题任务的图片提交材料。",
+            "requirements": "",
+            "rubric_version_id": rubric_id,
+            "targets": [{"target_type": "class", "target_id": class_id}],
+        },
+        headers=teacher,
+    )
+    assert created.status_code == 201, created.text
+    task = created.json()["data"]
+    assert len(task["questions"]) == 1
+    published = client.post(f"/api/v1/teacher/tasks/{task['id']}/publish", headers=teacher)
+    assert published.status_code == 200, published.text
+
+    student = login_headers(client, "demo_student")
+    image = client.post("/api/v1/student/submissions/image", json={"task_id": task["id"]}, headers=student)
+    assert image.status_code == 201, image.text
+    submission_id = image.json()["data"]["id"]
+
+    upload = client.post(
+        f"/api/v1/student/submissions/{submission_id}/files",
+        headers=student,
+        files={"files": ("page.png", PNG_1X1, "image/png")},
+        data={"file_kind": "photo"},
+    )
+    assert upload.status_code == 201, upload.text
+    file_id = upload.json()["data"][0]["id"]
+
+    confirm = client.post(
+        f"/api/v1/student/submissions/{submission_id}/confirm",
+        headers=student,
+        json={"pages": [{"file_id": file_id, "confirmed_text": "无子问题任务的图片正文。"}]},
+    )
+    assert confirm.status_code == 200, confirm.text
+
+    submit = client.post(f"/api/v1/student/submissions/{submission_id}/submit", headers=student)
+    assert submit.status_code == 200, submit.text
+    assert submit.json()["data"]["answers"][0]["essay_id"] is not None
+
+    count = db_session.scalar(
+        select(func.count(TaskQuestion.id)).where(TaskQuestion.task_id == task["id"])
+    )
+    assert count == 1
