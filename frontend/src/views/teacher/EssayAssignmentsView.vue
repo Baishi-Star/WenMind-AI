@@ -382,7 +382,7 @@ const emptyForm = () => ({
   word_max: 0,
   allow_resubmit: false,
   due_at: null,
-
+  questions: [],
 })
 const form = reactive(emptyForm())
 
@@ -475,7 +475,7 @@ async function submitForm() {
     allow_resubmit: form.allow_resubmit,
     due_at: form.due_at ? form.due_at.toISOString() : null,
     targets,
-
+    questions: [],
   }
   submitting.value = true
   try {
