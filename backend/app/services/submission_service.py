@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
-from app.models.base import EssayStatus, UserRole, utc_now
+from app.models.base import EssayStatus, EvaluationStatus, UserRole, utc_now
 from app.models.essay import Essay, EssayPrompt
 from app.models.evaluation import Evaluation
 from app.models.submission import Submission, SubmissionAnswer, SubmissionStatus
@@ -78,17 +78,18 @@ def _upsert_answer_essay(
             SubmissionAnswer.question_id == question_id,
         )
     )
-    prompt = db.scalar(select(EssayPrompt).where(EssayPrompt.title == task.title).limit(1))
+    prompt = db.get(EssayPrompt, task.prompt_id) if task.prompt_id else None
     if prompt is None:
         prompt = EssayPrompt(
             title=task.title,
-            requirements=task.requirements or task.prompt_text,
+            requirements=writing_task_service.compose_prompt_requirements(task.prompt_text, task.requirements),
             rubric_version_id=task.rubric_version_id,
             is_demo=is_demo,
             created_by=task.created_by,
         )
         db.add(prompt)
         db.flush()
+        task.prompt_id = prompt.id
     if answer is None:
         answer = SubmissionAnswer(
             submission_id=submission.id,
@@ -287,6 +288,8 @@ def list_student_submissions(db: Session, student: User) -> list[SubmissionRespo
         .where(Submission.student_id == student.id)
         .order_by(Submission.created_at.desc(), Submission.id.desc())
     ).all()
+    for submission in submissions:
+        refresh_submission_status(db, submission)
     return [_serialize_submission(db, item) for item in submissions]
 
 
@@ -302,11 +305,15 @@ def get_submission_detail(db: Session, user: User, submission_id: int) -> Submis
             raise PermissionDeniedError("无权访问该提交记录")
         if not writing_task_service.is_overdue(task) and task.status == TaskStatus.DRAFT:
             raise PermissionDeniedError("草稿任务的提交不可见")
+    refresh_submission_status(db, submission)
     return _serialize_submission(db, submission)
 
 
-def refresh_submission_status(db: Session, submission: Submission) -> None:
-    """根据逐题评价结果刷新提交状态，供查询时调用。"""
+def refresh_submission_status(db: Session, submission: Submission, commit: bool = True) -> None:
+    """根据逐题评价结果刷新提交状态，供查询与评价完成后调用。
+
+    无任何评价记录时保持原状态不变；commit=False 时由调用方统一提交。
+    """
     statuses = []
     for answer in submission.answers:
         if not answer.essay_id:
@@ -318,14 +325,15 @@ def refresh_submission_status(db: Session, submission: Submission) -> None:
             statuses.append(evaluation.status)
     if not statuses:
         return
-    if all(status == "completed" for status in statuses):
+    if all(status == EvaluationStatus.COMPLETED for status in statuses):
         new_status = SubmissionStatus.EVALUATED
-    elif any(status == "failed" for status in statuses):
+    elif any(status == EvaluationStatus.FAILED for status in statuses):
         new_status = SubmissionStatus.FAILED
-    elif any(status in ("pending", "processing") for status in statuses):
+    elif any(status in (EvaluationStatus.PENDING, EvaluationStatus.PROCESSING) for status in statuses):
         new_status = SubmissionStatus.EVALUATING
     else:
         new_status = submission.status
     if new_status != submission.status:
         submission.status = new_status
-        db.commit()
+        if commit:
+            db.commit()

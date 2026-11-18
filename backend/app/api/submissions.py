@@ -27,6 +27,7 @@ def _serialize_student_task(db: Session, student: User, context: dict) -> Studen
     submission = context.get("submission")
     evaluation_statuses = []
     if submission is not None:
+        submission_service.refresh_submission_status(db, submission)
         detail = submission_service._serialize_submission(db, submission)
         evaluation_statuses = [
             {

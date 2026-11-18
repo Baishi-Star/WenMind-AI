@@ -213,6 +213,12 @@
         <span>全国卷 60 分制 · AI 原始总分</span>
         <strong>{{ evaluation.original_total_score }}<small>/60</small></strong>
         <em v-if="evaluation.final_total_score !== null && evaluation.final_total_score !== undefined">教师最终总分 {{ evaluation.final_total_score }}/60</em>
+        <small
+          v-if="scoreCalibration"
+          class="score-calibration"
+        >
+          总分经量规基准校准，校准前 {{ scoreCalibration.raw_total }} 分（{{ scoreCalibration.scoring_calibration.calibration_version }}）
+        </small>
       </div>
       <div class="dimension-grid">
         <div
@@ -304,6 +310,11 @@ const agentNames = {
 }
 
 const executionMode = computed(() => props.evaluation.report?.execution_mode || 'pending')
+const scoreCalibration = computed(() => {
+  const report = props.evaluation.report?.report
+  if (!report || report.raw_total === undefined || !report.scoring_calibration) return null
+  return report
+})
 const qualityType = computed(() => ({ passed: 'success', needs_review: 'warning', failed: 'danger', processing: 'info' }[props.evaluation.report?.quality_status] || 'info'))
 const qualityLabel = computed(() => ({ passed: '审核通过', needs_review: '需要人工复核', failed: '审核失败', processing: '审核中' }[props.evaluation.report?.quality_status] || '待审核'))
 
@@ -322,6 +333,7 @@ function dimensionLabel(dimension) { return { content: '内容', expression: '�
 .task-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; color: var(--wm-text-secondary); font-size: 12px; }
 .task-error { margin-top: 14px; }
 .diagnostic-notice { margin: 14px 0 0; color: #92600a; font-size: 12px; line-height: 1.8; }
+.score-calibration { display: block; margin-top: 4px; color: var(--wm-text-secondary); font-size: 11px; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .section-head h2 { margin: 0; font-size: 17px; }
 .section-head span { color: var(--wm-text-secondary); font-size: 12px; }

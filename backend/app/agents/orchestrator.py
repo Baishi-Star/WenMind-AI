@@ -20,7 +20,21 @@ from app.schemas.agent import AgentResult
 from app.services.knowledge_service import search_knowledge
 
 logger = get_logger(__name__)
-DIAGNOSTIC_NOTICE = "本评价按全国卷三维 60 分制量规生成：内容 20 + 表达 20 + 发展 20，扣除字数不足分；AI 原始分与教师复核分双轨保存，最终以教师复核为准。"
+DIAGNOSTIC_NOTICE = (
+    "本评价按全国卷三维 60 分制量规生成：内容 20 + 表达 20 + 发展 20；"
+    "字数不足按每少 100 字扣 1 分、最多扣 4 分计算；"
+    "总分按量规基准校准合成，非三维简单相加，校准前分数 raw_total 同步公开；"
+    "AI 原始分与教师复核分双轨保存，最终以教师复核为准。"
+)
+ANCHOR_RAW = 36
+ANCHOR_SCORE = 50.0
+SLOPE = 0.5
+CALIBRATED_MIN = 36.0
+CALIBRATED_MAX = 58.0
+CALIBRATION_VERSION = "v1.0-2026-11-18"
+WORD_COUNT_FLOOR = 800
+WORDS_PER_DEDUCTION = 100
+DEDUCTION_MAX = 4
 AGENT_SEQUENCE = [
     ("topic_agent", "分析作文审题、核心任务回应和立意", None),
     ("content_agent", "评价内容：审题立意、中心与材料、思想情感", "content"),
@@ -98,12 +112,13 @@ class EvaluationOrchestrator:
             missing_dimensions = {"content", "expression", "development"} - scored_dimensions
             if missing_dimensions:
                 raise AppError(f"评价结果缺少维度得分：{', '.join(sorted(missing_dimensions))}")
-            evaluation.original_total_score = self._compose_total_score(essay, previous)
-            self._save_results(evaluation, report, previous, feedback, quality)
+            evaluation.original_total_score, score_calibration = self._compose_total_score(essay, previous)
+            self._save_results(evaluation, report, previous, feedback, quality, score_calibration)
             evaluation.status = EvaluationStatus.COMPLETED
             evaluation.error_message = None
             essay.status = EssayStatus.COMPLETED
             report.completed_at = datetime.now(timezone.utc)
+            self._refresh_submission_for_essay(essay.id)
             self.db.commit()
             logger.info("评价任务完成 evaluation_id=%s mode=%s", evaluation.id, self.client.execution_mode)
         except Exception as exc:
@@ -119,7 +134,28 @@ class EvaluationOrchestrator:
                 report.quality_status = "failed"
                 report.completed_at = utc_now()
                 report.quality_issues_json = _json_dump([str(exc)[:500]])
+            self._refresh_submission_for_essay(evaluation.essay_id)
             self.db.commit()
+
+    def _refresh_submission_for_essay(self, essay_id: int | None) -> None:
+        """按 essay 反查提交并刷新状态；查不到时静默跳过，不影响评价主流程。"""
+        if not essay_id:
+            return
+        from app.models.submission import Submission, SubmissionAnswer
+        from app.services import submission_service
+
+        try:
+            answer = self.db.scalar(
+                select(SubmissionAnswer).where(SubmissionAnswer.essay_id == essay_id).limit(1)
+            )
+            if answer is None:
+                return
+            submission = self.db.get(Submission, answer.submission_id)
+            if submission is None:
+                return
+            submission_service.refresh_submission_status(self.db, submission, commit=False)
+        except Exception:
+            logger.exception("提交状态回写失败 essay_id=%s，不影响评价结果", essay_id)
 
     def _retrieve(self, evaluation: Evaluation, prompt: EssayPrompt | None):
         title = prompt.title if prompt else "自由作文"
@@ -217,8 +253,11 @@ class EvaluationOrchestrator:
         quality.quality_status = "needs_review" if quality.quality_issues else (quality.quality_status or "passed")
         return quality
 
-    def _compose_total_score(self, essay: Essay, results: list[AgentResult]) -> float:
-        """按全国卷量规合成 60 分制原始总分：三维之和减去字数不足扣分。"""
+    def _compose_total_score(self, essay: Essay, results: list[AgentResult]) -> tuple[float, dict]:
+        """合成 60 分制原始总分：三维之和减去字数扣分，再按量规基准锚点校准。
+
+        维度分保持模型原值不变；raw_total 与校准参数随报告公开，便于复核与回溯。
+        """
         dimension_scores = {
             item.dimension: item.diagnostic_score
             for item in results
@@ -226,8 +265,23 @@ class EvaluationOrchestrator:
         }
         base_total = sum(dimension_scores.get(dim, 0) for dim in ("content", "expression", "development"))
         word_count = essay.char_count or len(essay.content or "")
-        deduction = max(0, 800 - word_count) // 50
-        return float(max(0, min(60, base_total - deduction)))
+        deduction = min(DEDUCTION_MAX, max(0, WORD_COUNT_FLOOR - word_count) // WORDS_PER_DEDUCTION)
+        raw_total = base_total - deduction
+        calibrated = ANCHOR_SCORE + (raw_total - ANCHOR_RAW) * SLOPE
+        total = round(max(CALIBRATED_MIN, min(CALIBRATED_MAX, calibrated)), 1)
+        calibration = {
+            "raw_total": raw_total,
+            "scoring_calibration": {
+                "anchor_raw": ANCHOR_RAW,
+                "anchor_score": ANCHOR_SCORE,
+                "slope": SLOPE,
+                "min": CALIBRATED_MIN,
+                "max": CALIBRATED_MAX,
+                "deduction": deduction,
+                "calibration_version": CALIBRATION_VERSION,
+            },
+        }
+        return total, calibration
 
     def _save_results(
         self,
@@ -236,6 +290,7 @@ class EvaluationOrchestrator:
         results: list[AgentResult],
         feedback: AgentResult,
         quality: AgentResult,
+        score_calibration: dict,
     ) -> None:
         self.db.query(DimensionScore).filter(DimensionScore.evaluation_id == evaluation.id).delete()
         self.db.query(FeedbackItem).filter(FeedbackItem.evaluation_id == evaluation.id).delete()
@@ -284,6 +339,8 @@ class EvaluationOrchestrator:
                 "agents": [item.model_dump() for item in results],
                 "total_score": evaluation.original_total_score,
                 "total_max_score": 60,
+                "raw_total": score_calibration["raw_total"],
+                "scoring_calibration": score_calibration["scoring_calibration"],
             }
         )
 

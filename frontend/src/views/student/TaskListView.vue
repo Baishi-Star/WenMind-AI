@@ -370,7 +370,13 @@
           >
             <template #label>
               <strong>作文正文</strong>
-              <span class="question-requirement">{{ question.requirements || question.question_text }}</span>
+              <div class="question-context">
+                <span class="question-context__row">材料：{{ question.question_text || activeTask.prompt_text }}</span>
+                <span
+                  v-if="question.requirements"
+                  class="question-context__row"
+                >要求：{{ question.requirements }}</span>
+              </div>
             </template>
             <el-input
               v-model="answerMap[question.id]"
@@ -455,6 +461,8 @@ let imageObjectUrls = []
 const recognizeElapsed = ref(0)
 const lastRecognizeSeconds = ref(null)
 let recognizeTimer = null
+let pollTimer = null
+const POLL_INTERVAL_MS = 8000
 
 const imageDialogTitle = computed(() => {
   if (!activeTask.value) return '上传作文照片'
@@ -474,13 +482,40 @@ function wordLabel(task) {
   return `${task.word_min || 0} ~ ${task.word_max || '不限'} 字`
 }
 
-async function loadTasks() {
-  loading.value = true
+function hasRunningEvaluation() {
+  return tasks.value.some(
+    (task) => task.submission_status === 'evaluating' || task.submission_status === 'submitted',
+  )
+}
+
+function stopStatusPolling() {
+  if (pollTimer) window.clearInterval(pollTimer)
+  pollTimer = null
+}
+
+function ensureStatusPolling() {
+  if (!hasRunningEvaluation()) {
+    stopStatusPolling()
+    return
+  }
+  if (pollTimer) return
+  pollTimer = window.setInterval(() => {
+    loadTasks({ silent: true })
+  }, POLL_INTERVAL_MS)
+}
+
+async function loadTasks(options = {}) {
+  const silent = options.silent === true
+  if (!silent) loading.value = true
   try {
     const response = await fetchStudentTasks()
     tasks.value = response.data
+    ensureStatusPolling()
+  } catch (error) {
+    stopStatusPolling()
+    if (!silent) throw error
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -733,6 +768,7 @@ async function openImageSubmit(task) {
 
 onBeforeUnmount(() => {
   stopRecognizeTimer()
+  stopStatusPolling()
   revokeImagePreviews()
 })
 onMounted(loadTasks)
@@ -746,11 +782,13 @@ onMounted(loadTasks)
 .task-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .task-card__head h2 { margin: 0 0 6px; font-size: 16px; }
 .task-card__meta { color: var(--wm-text-secondary); font-size: 11px; }
-.task-card__prompt { margin: 0; max-height: 72px; overflow: auto; color: var(--wm-text-secondary); font-size: 12px; line-height: 1.8; }
+.task-card__prompt { margin: 0; white-space: pre-wrap; color: var(--wm-text-secondary); font-size: 12px; line-height: 1.8; }
 .task-card__tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .task-card__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .submit-notice { margin-bottom: 12px; }
-.question-requirement { margin-left: 8px; color: var(--wm-text-secondary); font-size: 11px; font-weight: 400; }
+.question-context { margin-top: 4px; display: grid; gap: 2px; color: var(--wm-text-secondary); font-size: 11px; font-weight: 400; line-height: 1.7; }
+.question-context__row { display: block; }
+.question-context__row + .question-context__row { margin-top: 2px; }
 .answer-meta { margin-top: 5px; color: var(--wm-text-secondary); font-size: 11px; }
 .submit-error { margin-top: 12px; }
 .recognize-progress { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; color: var(--wm-text-secondary); font-size: 12px; }

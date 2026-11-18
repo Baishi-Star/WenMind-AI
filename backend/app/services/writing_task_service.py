@@ -1,4 +1,5 @@
 """写作任务业务：教师布置任务、学生自主任务、范围校验与状态流转。"""
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import func, or_, select
@@ -77,24 +78,42 @@ def serialize_task(db: Session, task: WritingTask) -> TaskResponse:
     )
 
 
+def summarize_prompt_title(prompt_text: str) -> str:
+    """未填任务标题时，取材料首个句子作为摘要，最多 200 字。"""
+    text = (prompt_text or "").strip()
+    if not text:
+        return "作文任务"
+    match = re.search(r"[。！？!?；;\n]", text)
+    summary = text[: match.start() + 1].strip() if match else text
+    return summary[:200]
+
+
+def compose_prompt_requirements(prompt_text: str, requirements: str) -> str:
+    """把材料全文与写作要求拼进命题要求，确保所有评价 Agent 都能读到完整材料。"""
+    material = (prompt_text or "").strip()
+    extra = (requirements or "").strip()
+    if material and extra:
+        return f"材料：{material}\n写作要求：{extra}"
+    if material:
+        return f"材料：{material}"
+    return extra
+
+
 def _resolve_task_prompt(
     db: Session,
     user: User,
     prompt_text: str,
     requirements: str,
     rubric_version_id: int | None,
+    title: str = "",
 ) -> int | None:
-    """按材料文本匹配或创建命题；同一份材料复用同一条 EssayPrompt。"""
+    """为任务创建独立命题，不与同名历史命题复用，避免材料串用。"""
     text = (prompt_text or "").strip()
     if not text:
         return None
-    title = text[:60]
-    existing = db.scalar(select(EssayPrompt).where(EssayPrompt.title == title).limit(1))
-    if existing is not None:
-        return existing.id
     prompt = EssayPrompt(
-        title=title,
-        requirements=(requirements or "").strip(),
+        title=(title.strip() or summarize_prompt_title(text))[:200],
+        requirements=compose_prompt_requirements(text, requirements),
         rubric_version_id=rubric_version_id,
         is_demo=user.is_demo,
         created_by=user.id,
@@ -213,9 +232,12 @@ def create_task(db: Session, user: User, payload: TaskCreate) -> TaskResponse:
     _validate_time_range(payload.start_at, payload.due_at)
     _validate_word_range(payload.word_min, payload.word_max)
     _validate_rubric(db, payload.rubric_version_id)
-    prompt_id = _resolve_task_prompt(db, user, payload.prompt_text, payload.requirements, payload.rubric_version_id)
+    task_title = payload.title.strip() or summarize_prompt_title(payload.prompt_text)
+    prompt_id = _resolve_task_prompt(
+        db, user, payload.prompt_text, payload.requirements, payload.rubric_version_id, title=task_title
+    )
     task = WritingTask(
-        title=payload.title.strip() or payload.prompt_text.strip()[:60],
+        title=task_title,
         source_type=TaskSource.TEACHER,
         prompt_text=payload.prompt_text.strip(),
         requirements=payload.requirements.strip(),
@@ -253,10 +275,10 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
     submissions = db.scalar(select(func.count(Submission.id)).where(Submission.task_id == task.id)) or 0
     if submissions and payload.questions is not None:
         raise ConflictError("已有学生提交，不能再修改题目")
-    if payload.title is not None:
-        task.title = payload.title.strip() or task.prompt_text.strip()[:60]
     if payload.prompt_text is not None:
         task.prompt_text = payload.prompt_text.strip()
+    if payload.title is not None:
+        task.title = payload.title.strip() or summarize_prompt_title(task.prompt_text)
     if payload.requirements is not None:
         task.requirements = payload.requirements.strip()
     if payload.rubric_version_id is not None:
@@ -276,7 +298,7 @@ def update_task(db: Session, user: User, task_id: int, payload: TaskUpdate) -> T
     _validate_word_range(task.word_min, task.word_max)
     if payload.prompt_text is not None or payload.requirements is not None or payload.rubric_version_id is not None:
         task.prompt_id = _resolve_task_prompt(
-            db, user, task.prompt_text, task.requirements, task.rubric_version_id
+            db, user, task.prompt_text, task.requirements, task.rubric_version_id, title=task.title
         )
     if payload.targets is not None:
         _replace_targets(db, task, user, payload.targets)
