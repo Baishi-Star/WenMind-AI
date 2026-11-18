@@ -154,18 +154,25 @@ class AgentLLMClient:
             "综合 Agent 额外输出 overall_summary、strengths、problems、training_suggestions；"
             "质量 Agent 额外输出 quality_status(passed/needs_review/failed) 和 quality_issues。"
         )
+        max_tokens = settings.llm_agent_max_tokens
+        if attempt > 0:
+            max_tokens = max(max_tokens, settings.llm_agent_retry_max_tokens)
         input_payload: dict[str, Any] = {
             "task": task,
             "essay": essay_context,
             "knowledge": knowledge_context,
-            "previous_agent_results": [item.model_dump() for item in previous_results],
+            "previous_agent_results": self._previous_payload(previous_results, attempt),
         }
         if attempt > 0:
-            input_payload["repair_instruction"] = "上次输出未通过 JSON Schema，请修正字段、分数范围和原文证据后重新输出完整 JSON。"
+            input_payload["repair_instruction"] = (
+                "上次输出因长度限制被截断或未通过结构化校验。请省略分析过程，只输出最小完整 JSON："
+                "保留 agent_name、task、analysis（不超过 60 字）、evidence（最多 1 条）、suggestions（最多 1 条）、"
+                "confidence、status，并包含本次维度要求的 diagnostic_score 与 grade。"
+            )
         request_body = {
             "model": settings.llm_model,
             "temperature": settings.llm_agent_temperature,
-            "max_tokens": settings.llm_agent_max_tokens,
+            "max_tokens": max_tokens,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": json.dumps(input_payload, ensure_ascii=False)},
@@ -173,6 +180,7 @@ class AgentLLMClient:
         }
         if settings.llm_json_mode:
             request_body["response_format"] = {"type": "json_object"}
+        usage = None
         try:
             with httpx.Client(timeout=settings.llm_timeout_seconds) as client:
                 response = client.post(
@@ -191,35 +199,66 @@ class AgentLLMClient:
             content = message.get("content") or ""
             reasoning = message.get("reasoning_content") or ""
             finish_reason = payload["choices"][0].get("finish_reason")
+            usage = payload.get("usage")
+            extracted = None
             if finish_reason == "length":
-                raise AppError(
-                    f"模型输出被长度限制截断，请提高 LLM_AGENT_MAX_TOKENS（当前 {settings.llm_agent_max_tokens}）",
-                    ErrorCode.UPSTREAM_UNAVAILABLE,
-                    503,
+                logger.warning(
+                    "Agent %s 输出被截断 finish_reason=%s content_len=%s reasoning_len=%s max_tokens=%s usage=%s",
+                    agent_name,
+                    finish_reason,
+                    len(content),
+                    len(reasoning),
+                    max_tokens,
+                    self._usage_digest(usage),
                 )
-            if not content.strip() and reasoning.strip():
+                try:
+                    extracted = self._extract_json(content, reasoning)
+                except json.JSONDecodeError:
+                    digest = self._usage_digest(usage)
+                    raise AppError(
+                        "检测到推理模型思考耗尽输出预算"
+                        f"（finish_reason=length，max_tokens={max_tokens}，"
+                        f"completion_tokens={digest['completion_tokens']}，"
+                        f"reasoning_tokens={digest['reasoning_tokens']}，"
+                        f"content 长度 {len(content)}，reasoning 长度 {len(reasoning)}）。"
+                        "请关闭 thinking 或改用非推理模型；继续提高 max_tokens 只能缓解，不能保证稳定",
+                        ErrorCode.UPSTREAM_UNAVAILABLE,
+                        503,
+                    )
+            if not content.strip() and reasoning.strip() and extracted is None:
+                logger.warning(
+                    "Agent %s 仅返回思考内容 finish_reason=%s reasoning_len=%s usage=%s",
+                    agent_name,
+                    finish_reason,
+                    len(reasoning),
+                    self._usage_digest(usage),
+                )
                 raise AppError(
-                    "模型仅返回思考内容、正式回答为空，请提高 LLM_AGENT_MAX_TOKENS 或改用非推理模型",
+                    "模型仅返回思考内容、正式回答为空，请关闭 thinking 或改用非推理模型",
                     ErrorCode.UPSTREAM_UNAVAILABLE,
                     503,
                 )
             if not content.strip() and not reasoning.strip():
                 raise AppError("模型返回内容为空", ErrorCode.UPSTREAM_UNAVAILABLE, 503)
-            try:
-                extracted = self._extract_json(content, reasoning)
-            except json.JSONDecodeError as exc:
-                logger.warning(
-                    "Agent %s JSON 提取失败 finish_reason=%s content_len=%s tail=%r",
-                    agent_name,
-                    finish_reason,
-                    len(content),
-                    (content or reasoning)[:500],
-                )
-                raise AppError(
-                    f"Agent 输出未通过结构化校验：未找到 JSON 对象（finish_reason={finish_reason}，content 长度 {len(content)}）",
-                    ErrorCode.UPSTREAM_UNAVAILABLE,
-                    503,
-                ) from exc
+            if extracted is None:
+                try:
+                    extracted = self._extract_json(content, reasoning)
+                except json.JSONDecodeError as exc:
+                    logger.warning(
+                        "Agent %s JSON 提取失败 finish_reason=%s content_len=%s reasoning_len=%s usage=%s tail=%r",
+                        agent_name,
+                        finish_reason,
+                        len(content),
+                        len(reasoning),
+                        self._usage_digest(usage),
+                        (content or reasoning)[:500],
+                    )
+                    raise AppError(
+                        f"Agent 输出未通过结构化校验：未找到 JSON 对象（finish_reason={finish_reason}，"
+                        f"content 长度 {len(content)}，reasoning 长度 {len(reasoning)}）",
+                        ErrorCode.UPSTREAM_UNAVAILABLE,
+                        503,
+                    ) from exc
             result = AgentResult.model_validate(extracted)
             if result.agent_name != agent_name:
                 raise ValueError(f"agent_name 应为 {agent_name}")
@@ -246,11 +285,53 @@ class AgentLLMClient:
         except AppError:
             raise
         except httpx.TimeoutException as exc:
+            logger.warning(
+                "Agent %s 调用超时 attempt=%s usage=%s", agent_name, attempt, self._usage_digest(usage)
+            )
             raise AppError("模型调用超时，请稍后重试", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
         except (httpx.HTTPError, KeyError, IndexError, TypeError) as exc:
+            logger.warning(
+                "Agent %s 调用失败 attempt=%s usage=%s error=%s",
+                agent_name,
+                attempt,
+                self._usage_digest(usage),
+                str(exc)[:200],
+            )
             raise AppError("真实模型调用失败或返回结构不完整", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
         except (json.JSONDecodeError, ValidationError, ValueError) as exc:
+            logger.warning(
+                "Agent %s 结构化校验失败 attempt=%s usage=%s error=%s",
+                agent_name,
+                attempt,
+                self._usage_digest(usage),
+                str(exc)[:300],
+            )
             raise AppError(f"Agent 输出未通过结构化校验：{exc}", ErrorCode.UPSTREAM_UNAVAILABLE, 503) from exc
+
+    @staticmethod
+    def _previous_payload(previous_results: list[AgentResult], attempt: int) -> list[dict]:
+        """首次请求携带完整前序结果；重试时压缩为摘要，避免上下文继续挤占预算。"""
+        if attempt <= 0:
+            return [item.model_dump() for item in previous_results]
+        return [
+            {
+                "agent_name": item.agent_name,
+                "dimension": item.dimension,
+                "diagnostic_score": item.diagnostic_score,
+                "analysis": (item.analysis or "")[:80],
+            }
+            for item in previous_results
+        ]
+
+    @staticmethod
+    def _usage_digest(usage: dict | None) -> dict:
+        usage = usage or {}
+        details = usage.get("completion_tokens_details") or {}
+        return {
+            "prompt_tokens": usage.get("prompt_tokens"),
+            "completion_tokens": usage.get("completion_tokens"),
+            "reasoning_tokens": details.get("reasoning_tokens"),
+        }
 
     @staticmethod
     def _describe_upstream_error(response: httpx.Response) -> str:
