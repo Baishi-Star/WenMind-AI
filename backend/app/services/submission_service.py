@@ -289,7 +289,7 @@ def list_student_submissions(db: Session, student: User) -> list[SubmissionRespo
         .order_by(Submission.created_at.desc(), Submission.id.desc())
     ).all()
     for submission in submissions:
-        refresh_submission_status(db, submission)
+        refresh_submission_status(db, submission, commit=False)
     return [_serialize_submission(db, item) for item in submissions]
 
 
@@ -305,7 +305,7 @@ def get_submission_detail(db: Session, user: User, submission_id: int) -> Submis
             raise PermissionDeniedError("无权访问该提交记录")
         if not writing_task_service.is_overdue(task) and task.status == TaskStatus.DRAFT:
             raise PermissionDeniedError("草稿任务的提交不可见")
-    refresh_submission_status(db, submission)
+    refresh_submission_status(db, submission, commit=False)
     return _serialize_submission(db, submission)
 
 

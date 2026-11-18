@@ -50,3 +50,9 @@ backend/data/vector_index/
 # ---------- CodeArts 工具目录 ----------
 .codeartsdoer/
 .codebase/
+# ---------- 本地私有资料与工具产物（不参与交付, 保留本地原文件） ----------
+.arts/
+backup-*.json
+skills-lock.json
+作文/
+知识库 标准.docx

@@ -6,14 +6,16 @@
 通过多 Agent 协同评价、写作知识库检索、评分证据追溯、学生申诉与教师复核、争议驱动的规则优化，
 以及跨作文能力画像，构建"可解释、可质疑、可复核、可持续改进"的写作成长闭环。
 
-**当前进度：阶段 8 功能完成，阶段 9 质量验收完成。**
-已具备 28 张 SQLite 数据表、真实评价驱动的成长趋势、教师复核优先的双轨口径、
+**当前版本：v1.0.0（决赛交付）。**
+已具备 35 张 SQLite 数据表、真实评价驱动的成长趋势、教师复核优先的双轨口径、
 个性化训练任务与完成结果、教师班级学情分析，以及教师进入学生个人成长详情。
-真实 DeepSeek 已完成一次完整 6 Agent 评价验收；Mock 仍用于自动化测试和离线演示。
+真实模型已完成 6 Agent 端到端评价验收；Mock 仍用于自动化测试和离线演示。
 
 > **真实性边界**：成长趋势全部来自数据库中的真实评价点，不使用随机数；少于 3 篇明确显示“数据积累中”。
 > 教师复核后的最终诊断优先于 AI 原始诊断，未复核评价标记 `ai_unreviewed`；跨量规版本时提示版本差异。
-> 当前量规只对内容、组织、语言三项计分，**审题与论证不编造独立数值**，页面明确显示“待量规支持”。
+> 量规采用三维 0–20（内容 content、表达 expression、发展 development）；审题（topic）保留但不计分，
+> 未计分能力不展示虚构数值。60 分制总分按量规基准校准合成（非三维简单相加），
+> 校准前 `raw_total` 与校准参数随报告公开，AI 原始分与教师最终分双轨保存、互不覆盖。
 > 训练建议由近期弱项规则生成，不是 AI 推荐结论；班级统计同样基于真实评价、复核和确认标签。
 > 真实模型评价仍属于教学诊断参考，质量审核为 `needs_review` 时必须由教师复核，不自动成为正式分数。
 
@@ -55,8 +57,8 @@
 | UI / 状态 / 路由 | Element Plus、Pinia、Vue Router | 已接入 |
 | 图表 / HTTP | ECharts、Axios | Axios 已用于健康检查；ECharts 已安装，图表在阶段 7 使用 |
 | 代码规范 | ESLint 9（flat config）+ eslint-plugin-vue | 已配置 |
-| 后端 | Python 3.13、FastAPI、Pydantic v2 | 已初始化 |
-| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 28 张表、自动建表与幂等演示数据已完成 |
+| 后端 | Python 3.12（线上 Ubuntu 24.04）/ 3.13（本地开发）、FastAPI、Pydantic v2 | 已上线运行 |
+| ORM / 数据库 | SQLAlchemy 2.0、SQLite | 35 张表、自动建表与幂等演示数据已完成 |
 | 认证与权限 | PBKDF2-SHA256、PyJWT | 注册登录、角色与资源归属校验已完成 |
 | 模型接入 | OpenAI-compatible API + Mock 规则引擎 | 真实 DeepSeek 6 Agent 已完成一次全链路验收；Mock 用于测试和离线演示 |
 
@@ -108,7 +110,7 @@ CodeArts Agent/
 
 - Node.js ≥ 20（本机验证版本 v24.15.0）
 - npm ≥ 10（本机验证版本 11.12.1）
-- Python ≥ 3.11（本机验证版本 3.13.4）
+- Python ≥ 3.11（本地开发 3.13.4；线上 Ubuntu 24.04 使用 3.12.3）
 
 ## 四、后端启动
 
@@ -212,7 +214,7 @@ uvicorn app.main:app --reload
 
 ### 多 Agent 作文评价（阶段 5）
 
-执行链路：`评价任务 → RAG 检索 → 审题 Agent → 内容 Agent → 结构 Agent → 语言 Agent → 综合反馈 Agent → 质量审核 Agent → 后端证据核验 → 结果入库`。
+执行链路：`评价任务 → RAG 检索 → 审题 Agent → 内容 Agent → 表达 Agent → 发展 Agent → 综合反馈 Agent → 质量审核 Agent → 后端证据核验 → 结果入库`。
 所有 Agent 输出必须通过 Pydantic Schema；真实模型输出解析或校验失败时最多重试一次。
 
 | 能力 | 实现 |
@@ -222,7 +224,7 @@ uvicorn app.main:app --reload
 | 检索记录 | `retrieval_logs` 保存查询、检索模式及 Top-K 来源 |
 | 综合报告 | `evaluation_reports` 保存执行模式、总结、训练建议和质量审核 |
 | 证据核验 | 精确位置通过；唯一匹配可修正；多匹配或不存在标 `unverified` |
-| 评分边界 | 仅 1–5 诊断等级，无加权总分；教师复核前 `final_score` 为空 |
+| 评分边界 | 三维 0–20（内容/表达/发展）；60 分制总分按量规基准校准合成并公开 `raw_total`；教师复核前维度 `final_score` 为空 |
 
 | 模式 | 模型与输出 | Token 用量 | 用途 |
 |---|---|---|---|
@@ -260,7 +262,8 @@ uvicorn app.main:app --reload
 - AI 原始维度分保存在 `dimension_scores.original_score`，反馈原文保存在 `feedback_items.content`。
 - 教师最终维度分写入 `final_score`；修改/删除反馈写入 `feedback_review_changes` 叠加记录。
 - 教师新增反馈与综合意见写入 `teacher_feedback_items`，复核原因、审核人和时间写入 `review_records`。
-- 复核不会修改或删除 AI 原始文本，也不直接计算加权总分。
+- 复核不会修改或删除 AI 原始文本；`original_score` 与 `original_total_score` 永不被覆盖。
+- 教师提交复核时按同一校准规则重算并写入 `final_total_score`：维持原评价时等于 AI 原始总分，调整维度分后随之联动，双轨总分均可追溯。
 
 **争议归因**
 六类标签由教师确认后写入 `review_issue_tags`：事实性错误、评分偏差、表达误判、评价遗漏、
@@ -288,7 +291,7 @@ uvicorn app.main:app --reload
 - 每条趋势点保留 `evaluation_id`、`essay_id`、量规版本、复核状态和复核结论。
 - 少于 3 篇有效评价返回 `data_accumulating`，页面显示“数据积累中”，不预测长期趋势。
 - 样本跨越多个量规版本时提示版本差异，不把规则变化全部解释为能力变化。
-- 内容、组织、语言输出 1–5 趋势；审题、论证没有独立量规分值，返回 `not_scored`，不拆分或伪造数值。
+- 内容、表达、发展输出 0–20 趋势；审题没有独立量规分值，返回 `not_scored`，不拆分或伪造数值；跨量规版本时提示口径差异。
 - 成长画像是可重建缓存：`growth_profiles` 保存当前画像，`growth_snapshots` 按评价保存真实趋势快照。
 
 个性化训练由近期有效评价的弱项规则生成，任务包含目标、推荐理由、训练内容、来源评价和完成状态。
@@ -387,17 +390,58 @@ cd backend
 - 模型配置在进程启动时读取，修改 `.env` 后不热加载；切换后应检查健康检查返回 `llm.mode=remote`。
 - 健康检查接口仅返回模型"配置完整度"，不返回密钥内容。
 
-## 九、后续阶段
+## 九、版本状态与后续方向
 
-| 阶段 | 内容 |
+| 版本 | 状态 |
 |---|---|
-| 下一阶段（赛事交付） | 自动化测试补全、部署与演示文档、录屏脚本、ZIP 结构检查和过程留证 |
+| v1.0.0（决赛交付） | 三维 0–20 评价、60 分制基准校准总分、教师复核双轨、成长画像、规则治理与部署脚本均已落地；后端 pytest 全绿、前端 lint/build 通过 |
+| 后续方向 | 长期趋势建模、量规版本回归样例扩充、教师端批量复核效率优化、云端监控与告警 |
+
+交付材料骨架见 `ppt/`、`project/`、`readme/`、`codedao_proof/` 四个目录。
 ## 十、云端部署
 
 > 详细流程见 [docs/deployment.md](docs/deployment.md)。部署脚本与模板见 [deploy/](deploy/)。
 
 - **流水线**：`WenMind-AI-CI`（CodeArts Pipeline，push 事件自动触发，`hook_id=1330536`）。
 - **四阶段**：① 代码检查与构建（前端 lint/build + 后端依赖安装，华为云镜像源）→ ② 单元测试（`pytest -q`，失败即红）→ ③ 制品归档（`wenmind-frontend-<tag>.tar.gz` / `wenmind-backend-<tag>.tar.gz`，tag = git short sha，上传 OBS 不允许覆盖）→ ④ 部署与验证（幂等部署 + systemd + nginx 反代 + 健康检查断言 `"code":0`，非 0 即流水线红）。
-- **数据持久化**：`/opt/wenmind/data/`（SQLite 与上传文件），部署/回滚全程不覆盖；版本切换用 `/opt/wenmind/current` 软链，回滚执行 `deploy/rollback.sh`。
+- **部署布局**：源码位于 `/opt/wenmind-src`（线上更新执行 `git pull --ff-only`）；数据持久目录 `/opt/wenmind/data/`（SQLite 与上传文件，部署/回滚全程不覆盖）；后端由 systemd 单元 `wenmind.service` 常驻（`EnvironmentFile=/opt/wenmind/env/wenmind.env`，权限 600）；前端由 nginx `sites-enabled/wenmind.conf` 托管并反代 `/api`；回滚执行 `deploy/rollback.sh`。
 - **敏感信息**：全部走 CodeArts 密文参数（私密参数），脚本只引用变量名，禁止写入库。
 - **在线地址**：`http://<ECS公网IP>/`（部署后替换为实际地址；健康检查 `http://<ECS公网IP>/api/v1/health` 应返回 `{"code":0,...}`）。
+## 十一、额外数据集与开源组件说明
+
+**数据集来源**
+
+| 数据 | 来源 | 是否入库 | 说明 |
+|---|---|---|---|
+| 演示账号与班级 | `backend/app/db/seed.py` 幂等初始化 | 是（本地库） | 3 名学生 + 1 名教师 + 1 名管理员、1 个演示班级、量规与示例题目 |
+| 知识库文档 | 管理员通过 `/knowledge/upload` 上传（PDF/DOCX/TXT） | 是（元数据与切片） | 原始文件在 `backend/data/uploads/`，索引在 `backend/data/vector_index/` |
+| 写作样例图片 | 项目根目录 `作文/`（本地私有资料） | 否 | 仅用于本地人工验收，不参与线上评测统计，已被 `.gitignore` 规则覆盖 |
+
+**主要开源组件**
+
+| 组件 | 版本线 | 许可 | 用途 |
+|---|---|---|---|
+| Vue 3 / Vite | 3.5 / 6.x | MIT | 前端框架与构建 |
+| Element Plus | 2.9 | MIT | UI 组件库 |
+| Pinia / Vue Router / Axios | 3.x / 4.x / 1.x | MIT | 状态、路由与 HTTP |
+| ECharts | 6.x | Apache-2.0 | 成长与班级统计图表 |
+| FastAPI / uvicorn | 0.1xx / 0.3x | MIT / BSD | 后端框架与 ASGI 服务 |
+| SQLAlchemy / Pydantic | 2.0 / v2 | MIT | ORM 与数据校验 |
+| PyJWT | 2.x | MIT | JWT 签发与校验 |
+| FAISS | 1.x | MIT | 本地向量索引（非语义检索时明确标注） |
+
+模型推理与视觉识别调用外部 OpenAI-compatible API，服务与密钥均不随仓库分发。
+
+## 十二、码道（CodeArts Doer）在项目开发中的应用总结
+
+本项目在开发全过程中使用华为云码道（CodeArts Doer）作为 AI 编程助手，主要应用在以下环节：
+
+- **需求拆解与阶段计划**：把决赛交付目标拆成可验收的阶段任务与清单。
+- **后端工程**：FastAPI 路由与服务分层、SQLAlchemy 模型与幂等 seed、多 Agent 编排、RAG 检索与证据核验、评分口径与校准模块。
+- **前端工程**：Vue 3 门户、路由与权限守卫、Element Plus 页面与 ECharts 图表。
+- **质量与验收**：pytest 用例、浏览器端到端校验脚本、接口契约比对与构建门禁。
+- **部署与文档**：流水线 definition、幂等部署脚本、README 与交付材料骨架。
+
+**责任边界**：码道的产出为代码、脚本与文档；评价分数、教师复核结论与统计结果全部来自系统真实运行数据，
+不存在由助手合成的截图、控制台数据或“已验证”记录。真实使用过程材料（插件截图、控制台数据、时间线）
+见 `codedao_proof/` 目录清单与占位说明，需由项目方补充实际材料。

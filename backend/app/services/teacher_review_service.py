@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core import scoring
 from app.core.constants import DIMENSION_AGENT, ISSUE_TAGS, REASON_TAG_MAP
 from app.core.exceptions import AppError, ConflictError, NotFoundError, PermissionDeniedError
 from app.models.appeal import Appeal, ReviewRecord
@@ -298,6 +299,9 @@ def review_appeal(db: Session, user: User, appeal_id: int, payload: TeacherRevie
     db.flush()
     for update in payload.dimension_updates:
         dimension_map[update.dimension].final_score = update.final_score
+    essay = db.get(Essay, evaluation.essay_id)
+    word_count = (essay.char_count or len(essay.content or "")) if essay else 0
+    evaluation.final_total_score, _calibration = scoring.compose_total_score(revised_scores, word_count)
     for change in payload.feedback_changes:
         feedback = db.get(FeedbackItem, change.feedback_item_id)
         if feedback is None or feedback.evaluation_id != evaluation.id:
